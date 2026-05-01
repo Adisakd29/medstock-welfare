@@ -486,7 +486,7 @@ function fmtDT(d) {
 function fmtDate(d) {
   if (!d || d === '') return '—';
   const dt = new Date(d + 'T00:00:00');
-  return `${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()-543+2500}`;
+  return `${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()+543}`;
 }
 function daysUntil(d) {
   if (!d || d === '') return 9999;
