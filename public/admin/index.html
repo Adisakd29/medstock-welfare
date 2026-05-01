@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedStock — ระบบสวัสดิการ (Admin)</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#1D9E75;--green-dark:#0F6E56;--green-light:#E1F5EE;--green-text:#0F6E56;
+  --amber:#BA7517;--amber-light:#FAEEDA;--amber-text:#854F0B;
+  --red:#A32D2D;--red-light:#FCEBEB;--red-text:#791F1F;
+  --blue:#185FA5;--blue-light:#E6F1FB;
+  --bg:#F5F4F0;--surface:#fff;--border:#E0DED8;--border2:#CCCAC4;
+  --text:#1a1a18;--text2:#666660;--text3:#99998F;
+  --r:8px;--rl:12px;
+}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+input,select,textarea,button{font-family:'Sarabun',sans-serif;}
+input,select,textarea{padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:13px;color:var(--text);background:var(--surface);outline:none;transition:border 0.15s;}
+input:focus,select:focus,textarea:focus{border-color:var(--green);}
+textarea{resize:vertical;}
+
+/* LOGIN */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);}
+.login-card{background:var(--surface);border-radius:16px;padding:32px 28px;width:340px;box-shadow:0 2px 12px rgba(0,0,0,0.08);}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:24px;}
+.login-dot{width:36px;height:36px;background:var(--green);border-radius:9px;display:flex;align-items:center;justify-content:center;}
+.login-dot svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2;}
+.login-title{font-size:17px;font-weight:600;}
+.login-sub{font-size:12px;color:var(--text2);margin-top:1px;}
+.login-card label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px;}
+.login-card input{width:100%;padding:10px 12px;font-size:15px;margin-bottom:14px;}
+.login-err{background:var(--red-light);color:var(--red-text);border-radius:var(--r);padding:8px 12px;font-size:13px;margin-bottom:12px;display:none;}
+
+/* APP */
+#app{display:none;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:12px;height:52px;position:sticky;top:0;z-index:40;}
+.logo{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;}
+.logo-dot{width:26px;height:26px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;}
+.logo-dot svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;}
+.org-tag{font-size:12px;color:var(--text2);background:var(--bg);padding:3px 10px;border-radius:20px;border:1px solid var(--border);}
+.ml{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.btn-logout{font-size:12px;color:var(--text2);background:none;border:1px solid var(--border);border-radius:var(--r);padding:5px 10px;cursor:pointer;}
+.btn-logout:hover{background:var(--bg);}
+
+/* QR BADGE */
+.qr-alert{background:var(--green);color:#fff;font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;cursor:pointer;display:flex;align-items:center;gap:6px;border:none;}
+.qr-alert svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;}
+
+.layout{display:flex;min-height:calc(100vh - 52px);}
+.sidebar{width:204px;background:var(--surface);border-right:1px solid var(--border);padding:14px 0;flex-shrink:0;position:sticky;top:52px;height:calc(100vh - 52px);}
+.nav-s{padding:0 10px;margin-bottom:18px;}
+.nav-lbl{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.09em;text-transform:uppercase;padding:0 8px;margin-bottom:5px;}
+.nav-i{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:var(--r);cursor:pointer;font-size:13px;color:var(--text2);transition:all 0.1s;margin-bottom:2px;}
+.nav-i:hover{background:var(--bg);color:var(--text);}
+.nav-i.active{background:var(--green-light);color:var(--green-text);font-weight:600;}
+.nav-i svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;flex-shrink:0;}
+.nav-badge{margin-left:auto;background:var(--red-light);color:var(--red);font-size:11px;padding:1px 7px;border-radius:20px;font-weight:600;}
+
+.main{flex:1;padding:20px;overflow-y:auto;}
+.page{display:none;}
+.page.active{display:block;}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;}
+.pt{font-size:19px;font-weight:600;}
+.ps{font-size:13px;color:var(--text2);margin-top:2px;}
+
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--r);font-size:13px;cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:var(--text);transition:all 0.1s;font-weight:500;}
+.btn:hover{background:var(--bg);}
+.btn-p{background:var(--green);color:#fff;border-color:var(--green);}
+.btn-p:hover{background:var(--green-dark);}
+.btn-d{background:var(--red-light);color:var(--red);border-color:transparent;}
+.btn-d:hover{background:#f7c1c1;}
+.btn-sm{padding:4px 9px;font-size:12px;}
+
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:14px;}
+.mlbl{font-size:12px;color:var(--text2);margin-bottom:5px;}
+.mval{font-size:22px;font-weight:600;}
+.mval.ok{color:var(--green);}
+.mval.warn{color:var(--amber);}
+.mval.danger{color:var(--red);}
+.msub{font-size:11px;color:var(--text3);margin-top:2px;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:14px;margin-bottom:14px;}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.ct{font-size:14px;font-weight:600;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+.tw{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;padding:7px 9px;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:9px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#fafaf8;}
+.er td{text-align:center;color:var(--text3);padding:28px;}
+
+.pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+.p-ok{background:var(--green-light);color:var(--green-text);}
+.p-warn{background:var(--amber-light);color:var(--amber-text);}
+.p-danger{background:var(--red-light);color:var(--red-text);}
+.p-info{background:var(--blue-light);color:var(--blue);}
+.p-qr{background:#EEF2FF;color:#4F46E5;}
+
+.sr{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;}
+.sr input{flex:1;min-width:150px;}
+.sr select{width:150px;}
+
+.al{display:flex;align-items:flex-start;gap:9px;padding:9px 12px;border-radius:var(--r);margin-bottom:7px;font-size:13px;}
+.al-d{background:var(--red-light);color:var(--red-text);}
+.al-w{background:var(--amber-light);color:var(--amber-text);}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.dot-d{background:var(--red);}
+.dot-w{background:var(--amber);}
+
+/* MODAL */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.38);z-index:100;align-items:center;justify-content:center;}
+.ov.open{display:flex;}
+.modal{background:var(--surface);border-radius:var(--rl);border:1px solid var(--border);padding:22px;width:500px;max-width:94vw;max-height:90vh;overflow-y:auto;}
+.mt{font-size:16px;font-weight:600;margin-bottom:16px;}
+.ma{display:flex;gap:7px;justify-content:flex-end;margin-top:16px;padding-top:13px;border-top:1px solid var(--border);}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg label{font-size:12px;color:var(--text2);font-weight:600;}
+.fg input,.fg select,.fg textarea{width:100%;}
+.fg textarea{height:64px;}
+.ff{grid-column:1/-1;}
+.req{color:var(--red);}
+
+/* QR MODAL */
+.qr-container{text-align:center;padding:8px 0;}
+.qr-img{width:220px;height:220px;border:1px solid var(--border);border-radius:12px;margin:0 auto 12px;}
+.qr-url{font-size:12px;color:var(--text2);word-break:break-all;background:var(--bg);padding:8px 10px;border-radius:6px;margin-bottom:12px;}
+.qr-note{font-size:12px;color:var(--text2);line-height:1.6;}
+
+/* LIVE BADGE */
+.live-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--green-text);background:var(--green-light);padding:3px 9px;border-radius:20px;font-weight:600;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.5s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+.toast{position:fixed;bottom:20px;right:20px;background:#1a1a18;color:#fff;padding:11px 16px;border-radius:var(--r);font-size:13px;z-index:999;opacity:0;transform:translateY(6px);transition:all 0.22s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+
+@media(max-width:700px){.sidebar{display:none;}.metrics{grid-template-columns:1fr 1fr;}.grid2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-dot"><svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20" stroke-linecap="round"/></svg></div>
+      <div><div class="login-title">MedStock สวัสดิการ</div><div class="login-sub">สำหรับเจ้าหน้าที่เท่านั้น</div></div>
+    </div>
+    <div class="login-err" id="login-err"></div>
+    <label>รหัสผ่าน</label>
+    <input type="password" id="login-pw" placeholder="กรอกรหัสผ่าน" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn btn-p" style="width:100%;justify-content:center;padding:10px;" onclick="doLogin()">เข้าสู่ระบบ</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+<div class="topbar">
+  <div class="logo"><div class="logo-dot"><svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20" stroke-linecap="round"/></svg></div>MedStock สวัสดิการ</div>
+  <span class="org-tag" id="org-tag">สถานศึกษา</span>
+  <div class="ml">
+    <button class="qr-alert" onclick="showQR()">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3" rx="0.5"/><rect x="18" y="14" width="3" height="3" rx="0.5"/><rect x="14" y="18" width="3" height="3" rx="0.5"/><rect x="18" y="18" width="3" height="3" rx="0.5"/></svg>
+      QR Code นักเรียน
+    </button>
+    <div class="live-badge"><div class="live-dot"></div>Live</div>
+    <button class="btn-logout" onclick="doLogout()">ออกจากระบบ</button>
+  </div>
+</div>
+
+<div class="layout">
+<div class="sidebar">
+  <div class="nav-s">
+    <div class="nav-lbl">ภาพรวม</div>
+    <div class="nav-i active" data-page="dashboard"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>แดชบอร์ด</div>
+  </div>
+  <div class="nav-s">
+    <div class="nav-lbl">คลังยา</div>
+    <div class="nav-i" data-page="inventory"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M5 3V2M11 3V2M2 6h12"/></svg>รายการยา</div>
+    <div class="nav-i" data-page="dispense"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v6M5 8h6" stroke-linecap="round"/></svg>บันทึกจ่ายยา</div>
+    <div class="nav-i" data-page="receive"><svg viewBox="0 0 16 16"><path d="M8 2v8M5 7l3 3 3-3M3 13h10" stroke-linecap="round"/></svg>รับยาเข้าคลัง</div>
+  </div>
+  <div class="nav-s">
+    <div class="nav-lbl">ระบบ</div>
+    <div class="nav-i" data-page="alerts"><svg viewBox="0 0 16 16"><path d="M8 1.5a5 5 0 0 1 5 5v2.5l1 2H2l1-2V6.5a5 5 0 0 1 5-5z"/><path d="M6 13.5a2 2 0 0 0 4 0" stroke-linecap="round"/></svg>การแจ้งเตือน<span class="nav-badge" id="alert-badge" style="display:none">0</span></div>
+    <div class="nav-i" data-page="settings"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke-linecap="round"/></svg>ตั้งค่า</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="ph"><div><div class="pt">แดชบอร์ด</div><div class="ps" id="dash-date"></div></div>
+      <button class="btn btn-p" onclick="openModal('add-med')">+ เพิ่มรายการยา</button></div>
+    <div class="metrics">
+      <div class="metric"><div class="mlbl">รายการยาทั้งหมด</div><div class="mval ok" id="m-total">—</div><div class="msub">รายการ</div></div>
+      <div class="metric"><div class="mlbl">ใกล้หมดอายุ</div><div class="mval warn" id="m-exp">—</div><div class="msub">ภายใน 60 วัน</div></div>
+      <div class="metric"><div class="mlbl">สต็อกต่ำ</div><div class="mval danger" id="m-low">—</div><div class="msub">ต่ำกว่าขั้นต่ำ</div></div>
+      <div class="metric"><div class="mlbl">จ่ายยาวันนี้</div><div class="mval" id="m-today">—</div><div class="msub">ครั้ง</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><div class="ch"><div class="ct">ยาที่จ่ายบ่อยที่สุด</div></div>
+        <div class="tw"><table><thead><tr><th>ชื่อยา</th><th>ครั้ง</th></tr></thead><tbody id="top-meds"></tbody></table></div></div>
+      <div class="card"><div class="ch"><div class="ct">จ่ายยาล่าสุด (Real-time)</div></div>
+        <div id="recent-list" style="display:flex;flex-direction:column;gap:5px;"></div></div>
+    </div>
+  </div>
+
+  <!-- INVENTORY -->
+  <div class="page" id="page-inventory">
+    <div class="ph"><div><div class="pt">รายการยาและเวชภัณฑ์</div><div class="ps">จัดการคลังยาทั้งหมด</div></div>
+      <button class="btn btn-p" onclick="openModal('add-med')">+ เพิ่มรายการ</button></div>
+    <div class="card" style="padding-bottom:0;">
+      <div class="sr">
+        <input type="text" id="inv-q" placeholder="ค้นหาชื่อยา..." oninput="renderInv()">
+        <select id="inv-cat" onchange="renderInv()"><option value="">ทุกหมวด</option><option>ยาแก้ปวด</option><option>ยาแก้แพ้</option><option>ยาแก้ท้องเสีย</option><option>ยาทาภายนอก</option><option>เวชภัณฑ์</option><option>อื่นๆ</option></select>
+        <select id="inv-st" onchange="renderInv()"><option value="">ทุกสถานะ</option><option value="ok">ปกติ</option><option value="low">สต็อกต่ำ</option><option value="exp">ใกล้หมดอายุ</option><option value="danger">เร่งด่วน</option></select>
+      </div>
+      <div class="tw"><table><thead><tr><th>ชื่อยา</th><th>หมวด</th><th>คงเหลือ</th><th>หน่วย</th><th>ขั้นต่ำ</th><th>วันหมดอายุ</th><th>สถานะ</th><th></th></tr></thead><tbody id="inv-body"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- DISPENSE -->
+  <div class="page" id="page-dispense">
+    <div class="ph"><div><div class="pt">บันทึกการจ่ายยา</div><div class="ps">ประวัติการรับยา (รวม QR + เจ้าหน้าที่)</div></div>
+      <button class="btn btn-p" onclick="openModal('disp-form')">+ บันทึกด้วยตนเอง</button></div>
+    <div class="card" style="padding-bottom:0;">
+      <div class="sr">
+        <input type="date" id="disp-date" onchange="renderDisp()" style="width:150px;">
+        <input type="text" id="disp-q" placeholder="ค้นหาชื่อ..." oninput="renderDisp()" style="flex:1;">
+      </div>
+      <div class="tw"><table><thead><tr><th>วัน/เวลา</th><th>ชื่อ</th><th>ชั้น/ห้อง</th><th>ยา</th><th>จำนวน</th><th>อาการ</th><th>ช่องทาง</th><th></th></tr></thead><tbody id="disp-body"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- RECEIVE -->
+  <div class="page" id="page-receive">
+    <div class="ph"><div><div class="pt">รับยาเข้าคลัง</div><div class="ps">บันทึกการรับยาจากแหล่งต่างๆ</div></div>
+      <button class="btn btn-p" onclick="openModal('recv-form')">+ บันทึกการรับยา</button></div>
+    <div class="card" style="padding-bottom:0;">
+      <div class="tw"><table><thead><tr><th>วันที่</th><th>ยา</th><th>จำนวน</th><th>ล็อต</th><th>วันหมดอายุ</th><th>แหล่งที่มา</th><th></th></tr></thead><tbody id="recv-body"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- ALERTS -->
+  <div class="page" id="page-alerts">
+    <div class="ph"><div><div class="pt">การแจ้งเตือน</div><div class="ps">รายการที่ต้องดำเนินการ</div></div></div>
+    <div id="alerts-container"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="ph"><div><div class="pt">ตั้งค่าระบบ</div></div></div>
+    <div class="card" style="max-width:440px;">
+      <div class="ct" style="margin-bottom:13px;">ข้อมูลสถานศึกษา</div>
+      <div class="fg" style="margin-bottom:9px;"><label>ชื่อสถานศึกษา</label><input type="text" id="s-org" placeholder="โรงเรียน/วิทยาลัย..."></div>
+      <div class="fg" style="margin-bottom:13px;"><label>ชื่อผู้ดูแลระบบ</label><input type="text" id="s-user" placeholder="ชื่อ-นามสกุล"></div>
+      <div class="ct" style="margin-bottom:9px;font-size:13px;">รหัสผ่านปัจจุบัน: <code style="background:var(--bg);padding:2px 6px;border-radius:4px;">ดูในไฟล์ server.js (ADMIN_PASSWORD)</code></div>
+      <button class="btn btn-p" onclick="saveSettings()">บันทึกการตั้งค่า</button>
+    </div>
+    <div class="card" style="max-width:440px;margin-top:0;">
+      <div class="ct" style="margin-bottom:13px;">QR Code นักเรียน</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">นักเรียนสแกนเพื่อกรอกฟอร์มขอรับยาผ่านมือถือ</p>
+      <button class="btn btn-p" onclick="showQR()">แสดง QR Code</button>
+    </div>
+  </div>
+
+</div>
+</div>
+</div><!-- /app -->
+
+<!-- MODALS -->
+<div class="ov" id="ov-add-med" onclick="if(event.target===this)closeModal('add-med')">
+  <div class="modal">
+    <div class="mt" id="med-modal-title">เพิ่มรายการยา</div>
+    <input type="hidden" id="edit-id">
+    <div class="fr">
+      <div class="fg"><label>ชื่อยา (ภาษาไทย) <span class="req">*</span></label><input type="text" id="f-name" placeholder="พาราเซตามอล..."></div>
+      <div class="fg"><label>ชื่อสามัญ/อังกฤษ</label><input type="text" id="f-generic" placeholder="Paracetamol"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>หมวดหมู่</label><select id="f-cat"><option>ยาแก้ปวด</option><option>ยาแก้แพ้</option><option>ยาแก้ท้องเสีย</option><option>ยาทาภายนอก</option><option>เวชภัณฑ์</option><option>อื่นๆ</option></select></div>
+      <div class="fg"><label>หน่วยนับ</label><select id="f-unit"><option>เม็ด</option><option>ซอง</option><option>ขวด</option><option>หลอด</option><option>ม้วน</option><option>ชิ้น</option><option>กล่อง</option></select></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>จำนวนคงเหลือ</label><input type="number" id="f-qty" value="0" min="0"></div>
+      <div class="fg"><label>สต็อกขั้นต่ำ</label><input type="number" id="f-min" value="10" min="0"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>วันหมดอายุ</label><input type="date" id="f-exp"></div>
+      <div class="fg"><label>หมายเลขล็อต</label><input type="text" id="f-lot" placeholder="LOT-XXXX"></div>
+    </div>
+    <div class="fg ff" style="margin-top:4px;"><label>หมายเหตุ</label><textarea id="f-note" placeholder="รายละเอียดเพิ่มเติม..."></textarea></div>
+    <div class="ma"><button class="btn" onclick="closeModal('add-med')">ยกเลิก</button><button class="btn btn-p" onclick="saveMed()">บันทึก</button></div>
+  </div>
+</div>
+
+<div class="ov" id="ov-disp-form" onclick="if(event.target===this)closeModal('disp-form')">
+  <div class="modal">
+    <div class="mt">บันทึกการจ่ายยา (โดยเจ้าหน้าที่)</div>
+    <div class="fr">
+      <div class="fg"><label>ชื่อ-นามสกุล <span class="req">*</span></label><input type="text" id="d-name" placeholder="ชื่อนักเรียน"></div>
+      <div class="fg"><label>ชั้น/ห้อง</label><input type="text" id="d-cls" placeholder="ม.3/2"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>ยาที่จ่าย <span class="req">*</span></label><select id="d-med"></select></div>
+      <div class="fg"><label>จำนวน</label><input type="number" id="d-qty" value="1" min="1"></div>
+    </div>
+    <div class="fg ff" style="margin-top:4px;"><label>อาการ</label><textarea id="d-sym" placeholder="อาการที่พบ..."></textarea></div>
+    <div class="ma"><button class="btn" onclick="closeModal('disp-form')">ยกเลิก</button><button class="btn btn-p" onclick="saveDisp()">บันทึก</button></div>
+  </div>
+</div>
+
+<div class="ov" id="ov-recv-form" onclick="if(event.target===this)closeModal('recv-form')">
+  <div class="modal">
+    <div class="mt">รับยาเข้าคลัง</div>
+    <div class="fr">
+      <div class="fg"><label>ยา <span class="req">*</span></label><select id="r-med"></select></div>
+      <div class="fg"><label>จำนวน</label><input type="number" id="r-qty" value="1" min="1"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>หมายเลขล็อต</label><input type="text" id="r-lot" placeholder="LOT-XXXX"></div>
+      <div class="fg"><label>วันหมดอายุ</label><input type="date" id="r-exp"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>แหล่งที่มา</label><input type="text" id="r-src" placeholder="กรมสวัสดิการ..."></div>
+      <div class="fg"><label>วันที่รับ</label><input type="date" id="r-date"></div>
+    </div>
+    <div class="ma"><button class="btn" onclick="closeModal('recv-form')">ยกเลิก</button><button class="btn btn-p" onclick="saveRecv()">บันทึก</button></div>
+  </div>
+</div>
+
+<div class="ov" id="ov-qr" onclick="if(event.target===this)closeModal('qr')">
+  <div class="modal" style="max-width:360px;">
+    <div class="mt">QR Code สำหรับนักเรียน</div>
+    <div class="qr-container">
+      <img id="qr-img" class="qr-img" src="" alt="QR Code">
+      <div class="qr-url" id="qr-url"></div>
+      <div class="qr-note">นักเรียนสแกน QR Code นี้ด้วยมือถือ เพื่อกรอกฟอร์มขอรับยา<br>ข้อมูลจะอัพเดทในระบบทันที</div>
+      <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;">
+        <button class="btn" onclick="printQR()">พิมพ์ QR</button>
+        <button class="btn" onclick="closeModal('qr')">ปิด</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-confirm" onclick="if(event.target===this)closeModal('confirm')">
+  <div class="modal" style="max-width:360px;">
+    <div class="mt">ยืนยันการดำเนินการ</div>
+    <div id="confirm-msg" style="font-size:14px;color:var(--text);margin-bottom:6px;"></div>
+    <div id="confirm-sub" style="font-size:13px;color:var(--text2);"></div>
+    <div class="ma"><button class="btn" onclick="closeModal('confirm')">ยกเลิก</button><button class="btn btn-d" id="confirm-ok">ยืนยัน</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────
+let token = sessionStorage.getItem('medstock_token') || '';
+let medicines = [];
+let dispenses = [];
+let receives = [];
+let pollTimer = null;
+
+// ─── AUTH ────────────────────────────────────────────────────
+async function doLogin() {
+  const pw = document.getElementById('login-pw').value;
+  const err = document.getElementById('login-err');
+  err.style.display = 'none';
+  try {
+    const res = await api('/api/login', 'POST', { password: pw });
+    if (res.error) { err.textContent = res.error; err.style.display = 'block'; return; }
+    token = res.token;
+    sessionStorage.setItem('medstock_token', token);
+    startApp();
+  } catch(e) { err.textContent = 'เชื่อมต่อไม่ได้'; err.style.display = 'block'; }
+}
+
+async function doLogout() {
+  await api('/api/logout', 'POST');
+  token = ''; sessionStorage.removeItem('medstock_token');
+  clearInterval(pollTimer);
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ─── API HELPER ──────────────────────────────────────────────
+async function api(url, method='GET', body=null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json', 'x-auth-token': token } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  return res.json();
+}
+
+// ─── APP START ───────────────────────────────────────────────
+async function startApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  const now = new Date();
+  document.getElementById('dash-date').textContent = now.toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  await Promise.all([loadMedicines(), loadSettings()]);
+  await Promise.all([loadDispenses(), loadReceives()]);
+  renderDashboard();
+  updateAlertBadge();
+  // Poll every 8 seconds for new dispenses (real-time QR updates)
+  pollTimer = setInterval(async () => {
+    await loadDispenses();
+    const pg = document.querySelector('.page.active')?.id;
+    if (pg === 'page-dashboard') renderDashboard();
+    if (pg === 'page-dispense') renderDisp();
+    updateAlertBadge();
+  }, 8000);
+}
+
+// ─── NAV ─────────────────────────────────────────────────────
+document.querySelectorAll('.nav-i').forEach(el => {
+  el.addEventListener('click', () => {
+    const pg = el.dataset.page;
+    document.querySelectorAll('.nav-i').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('page-' + pg).classList.add('active');
+    if (pg === 'dashboard') renderDashboard();
+    if (pg === 'inventory') renderInv();
+    if (pg === 'dispense') renderDisp();
+    if (pg === 'receive') renderRecv();
+    if (pg === 'alerts') renderAlerts();
+    if (pg === 'settings') loadSettingsUI();
+  });
+});
+
+// ─── MODAL ───────────────────────────────────────────────────
+function openModal(id) {
+  if (id === 'add-med') resetMedForm();
+  if (id === 'disp-form') { populateSel('d-med'); }
+  if (id === 'recv-form') { populateSel('r-med'); document.getElementById('r-date').value = today(); }
+  document.getElementById('ov-' + id).classList.add('open');
+}
+function closeModal(id) { document.getElementById('ov-' + id).classList.remove('open'); }
+
+function populateSel(selId) {
+  const el = document.getElementById(selId);
+  el.innerHTML = medicines.map(m => `<option value="${m.id}">${m.name} (${m.qty} ${m.unit})</option>`).join('') || '<option value="">— ไม่มียา —</option>';
+}
+
+function showConfirm(msg, sub, onOk) {
+  document.getElementById('confirm-msg').textContent = msg;
+  document.getElementById('confirm-sub').textContent = sub;
+  document.getElementById('confirm-ok').onclick = () => { onOk(); closeModal('confirm'); };
+  openModal('confirm');
+}
+
+// ─── LOAD DATA ───────────────────────────────────────────────
+async function loadMedicines() {
+  medicines = await api('/api/medicines') || [];
+}
+async function loadDispenses() {
+  dispenses = await api('/api/dispenses') || [];
+}
+async function loadReceives() {
+  receives = await api('/api/receives') || [];
+}
+async function loadSettings() {
+  const s = await api('/api/settings');
+  if (s.org_name) { document.getElementById('org-tag').textContent = s.org_name; }
+}
+
+// ─── UTILS ───────────────────────────────────────────────────
+function today() { return new Date().toISOString().slice(0,10); }
+function fmtDT(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return `${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()-543+2500} ${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}`;
+}
+function fmtDate(d) {
+  if (!d || d === '') return '—';
+  const dt = new Date(d + 'T00:00:00');
+  return `${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()-543+2500}`;
+}
+function daysUntil(d) {
+  if (!d || d === '') return 9999;
+  return Math.ceil((new Date(d) - new Date()) / 86400000);
+}
+function getMedStatus(m) {
+  const d = daysUntil(m.exp_date);
+  if (d < 0) return 'danger';
+  if (d <= 15) return 'danger';
+  if (d <= 60) return 'exp';
+  if (m.min_qty > 0 && m.qty < m.min_qty) return 'low';
+  return 'ok';
+}
+function pill(s) {
+  const mp = { ok:['p-ok','ปกติ'], low:['p-danger','สต็อกต่ำ'], exp:['p-warn','ใกล้หมดอายุ'], danger:['p-danger','เร่งด่วน'] };
+  const [cls,lbl] = mp[s] || mp.ok;
+  return `<span class="pill ${cls}">${lbl}</span>`;
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─── DASHBOARD ───────────────────────────────────────────────
+function renderDashboard() {
+  const stats = {
+    total: medicines.length,
+    exp: medicines.filter(m => { const d = daysUntil(m.exp_date); return d >= 0 && d <= 60 && m.exp_date; }).length,
+    low: medicines.filter(m => m.min_qty > 0 && m.qty < m.min_qty).length,
+    today: dispenses.filter(d => d.created_at && d.created_at.startsWith(today())).length
+  };
+  document.getElementById('m-total').textContent = stats.total;
+  document.getElementById('m-exp').textContent = stats.exp;
+  document.getElementById('m-low').textContent = stats.low;
+  document.getElementById('m-today').textContent = stats.today;
+
+  const freq = {};
+  dispenses.forEach(d => freq[d.med_name] = (freq[d.med_name]||0) + (d.qty||1));
+  const top = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0,5);
+  document.getElementById('top-meds').innerHTML = top.length
+    ? top.map(([n,c]) => `<tr><td>${n}</td><td><strong>${c}</strong></td></tr>`).join('')
+    : '<tr class="er"><td colspan="2">ยังไม่มีข้อมูล</td></tr>';
+
+  const recent = dispenses.slice(0, 6);
+  document.getElementById('recent-list').innerHTML = recent.length
+    ? recent.map(d => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg);border-radius:var(--r);font-size:12px;">
+        <div><strong style="font-size:13px;">${d.student_name}</strong>${d.class_room ? ' · '+d.class_room : ''}<div style="color:var(--text2);margin-top:1px;">${d.med_name} ${d.qty} ${d.unit}</div></div>
+        <div style="text-align:right;flex-shrink:0;margin-left:10px;">
+          <span class="pill ${d.source==='qr'?'p-qr':'p-ok'}">${d.source==='qr'?'QR':'เจ้าหน้าที่'}</span>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">${fmtDT(d.created_at)}</div>
+        </div></div>`).join('')
+    : '<div style="text-align:center;color:var(--text3);padding:20px;">ยังไม่มีข้อมูล</div>';
+}
+
+// ─── INVENTORY ───────────────────────────────────────────────
+function renderInv() {
+  const q = (document.getElementById('inv-q').value || '').toLowerCase();
+  const cat = document.getElementById('inv-cat').value;
+  const st = document.getElementById('inv-st').value;
+  let data = medicines.map(m => ({...m, status: getMedStatus(m)}));
+  if (q) data = data.filter(m => m.name.toLowerCase().includes(q) || (m.generic||'').toLowerCase().includes(q));
+  if (cat) data = data.filter(m => m.category === cat);
+  if (st) data = data.filter(m => m.status === st);
+  document.getElementById('inv-body').innerHTML = data.length
+    ? data.map(m => `<tr>
+        <td><strong>${m.name}</strong>${m.generic?`<div style="font-size:11px;color:var(--text3)">${m.generic}</div>`:''}</td>
+        <td>${m.category}</td>
+        <td style="font-weight:600;${m.qty<(m.min_qty||0)?'color:var(--red)':''}">${m.qty}</td>
+        <td>${m.unit}</td><td>${m.min_qty||'—'}</td>
+        <td>${fmtDate(m.exp_date)}</td>
+        <td>${pill(m.status)}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-sm" onclick="editMed('${m.id}')">แก้ไข</button>
+          <button class="btn btn-sm btn-d" onclick="delMed('${m.id}','${m.name.replace(/'/g,"\\'")}')">ลบ</button>
+        </td></tr>`).join('')
+    : '<tr class="er"><td colspan="8">ไม่พบรายการยา</td></tr>';
+}
+
+// ─── DISPENSE LIST ───────────────────────────────────────────
+function renderDisp() {
+  const fd = document.getElementById('disp-date').value;
+  const q = (document.getElementById('disp-q').value || '').toLowerCase();
+  let data = [...dispenses];
+  if (fd) data = data.filter(d => d.created_at && d.created_at.startsWith(fd));
+  if (q) data = data.filter(d => d.student_name.toLowerCase().includes(q) || (d.med_name||'').toLowerCase().includes(q));
+  document.getElementById('disp-body').innerHTML = data.length
+    ? data.map(d => `<tr>
+        <td style="white-space:nowrap;">${fmtDT(d.created_at)}</td>
+        <td><strong>${d.student_name}</strong></td>
+        <td>${d.class_room||'—'}</td>
+        <td>${d.med_name}</td>
+        <td>${d.qty} ${d.unit}</td>
+        <td>${d.symptom||'—'}</td>
+        <td><span class="pill ${d.source==='qr'?'p-qr':'p-ok'}">${d.source==='qr'?'QR':'เจ้าหน้าที่'}</span></td>
+        <td><button class="btn btn-sm btn-d" onclick="delDisp('${d.id}')">ลบ</button></td></tr>`).join('')
+    : '<tr class="er"><td colspan="8">ไม่พบข้อมูล</td></tr>';
+}
+
+// ─── RECEIVE LIST ────────────────────────────────────────────
+function renderRecv() {
+  document.getElementById('recv-body').innerHTML = receives.length
+    ? receives.map(r => `<tr>
+        <td>${fmtDate(r.received_date)}</td>
+        <td><strong>${r.med_name}</strong></td>
+        <td>${r.qty} ${r.unit}</td>
+        <td>${r.lot||'—'}</td>
+        <td>${fmtDate(r.exp_date)}</td>
+        <td>${r.source||'—'}</td>
+        <td><button class="btn btn-sm btn-d" onclick="delRecv('${r.id}')">ลบ</button></td></tr>`).join('')
+    : '<tr class="er"><td colspan="7">ยังไม่มีข้อมูล</td></tr>';
+}
+
+// ─── ALERTS ──────────────────────────────────────────────────
+function renderAlerts() {
+  const expired = medicines.filter(m => m.exp_date && daysUntil(m.exp_date) < 0);
+  const urgent = medicines.filter(m => { const d = daysUntil(m.exp_date); return d >= 0 && d <= 15 && m.exp_date; });
+  const warn = medicines.filter(m => { const d = daysUntil(m.exp_date); return d > 15 && d <= 60 && m.exp_date; });
+  const low = medicines.filter(m => m.min_qty > 0 && m.qty < m.min_qty);
+  let html = '';
+  if (!expired.length && !urgent.length && !warn.length && !low.length) {
+    html = '<div class="card"><div style="text-align:center;padding:28px;color:var(--text2);">ไม่มีการแจ้งเตือน ระบบทำงานปกติ</div></div>';
+  }
+  if (expired.length) {
+    html += `<div class="card"><div class="ct" style="margin-bottom:10px;color:var(--red);">ยาหมดอายุแล้ว (${expired.length} รายการ)</div>`;
+    html += expired.map(m => `<div class="al al-d"><div class="dot dot-d"></div><div><strong>${m.name}</strong> — หมดอายุ ${fmtDate(m.exp_date)} · คงเหลือ ${m.qty} ${m.unit}</div></div>`).join('');
+    html += '</div>';
+  }
+  if (urgent.length) {
+    html += `<div class="card"><div class="ct" style="margin-bottom:10px;">ใกล้หมดอายุเร่งด่วน ≤ 15 วัน (${urgent.length} รายการ)</div>`;
+    html += urgent.map(m => `<div class="al al-d"><div class="dot dot-d"></div><div><strong>${m.name}</strong> — หมดอายุ ${fmtDate(m.exp_date)} (อีก ${daysUntil(m.exp_date)} วัน) · คงเหลือ ${m.qty} ${m.unit}</div></div>`).join('');
+    html += '</div>';
+  }
+  if (warn.length) {
+    html += `<div class="card"><div class="ct" style="margin-bottom:10px;">ใกล้หมดอายุ 16–60 วัน (${warn.length} รายการ)</div>`;
+    html += warn.map(m => `<div class="al al-w"><div class="dot dot-w"></div><div><strong>${m.name}</strong> — หมดอายุ ${fmtDate(m.exp_date)} (อีก ${daysUntil(m.exp_date)} วัน) · คงเหลือ ${m.qty} ${m.unit}</div></div>`).join('');
+    html += '</div>';
+  }
+  if (low.length) {
+    html += `<div class="card"><div class="ct" style="margin-bottom:10px;">สต็อกต่ำ (${low.length} รายการ)</div>`;
+    html += low.map(m => `<div class="al al-d"><div class="dot dot-d"></div><div><strong>${m.name}</strong> — คงเหลือ ${m.qty} ${m.unit} (ขั้นต่ำ ${m.min_qty} ${m.unit})</div></div>`).join('');
+    html += '</div>';
+  }
+  document.getElementById('alerts-container').innerHTML = html;
+}
+
+function updateAlertBadge() {
+  const n = medicines.filter(m => {
+    const d = daysUntil(m.exp_date);
+    return (d <= 60 && d >= 0 && m.exp_date) || d < 0 || (m.min_qty > 0 && m.qty < m.min_qty);
+  }).length;
+  const b = document.getElementById('alert-badge');
+  b.textContent = n; b.style.display = n ? 'inline' : 'none';
+}
+
+// ─── MED CRUD ────────────────────────────────────────────────
+function resetMedForm() {
+  document.getElementById('edit-id').value = '';
+  document.getElementById('med-modal-title').textContent = 'เพิ่มรายการยา';
+  ['f-name','f-generic','f-lot','f-note'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-qty').value = '0';
+  document.getElementById('f-min').value = '10';
+  document.getElementById('f-exp').value = '';
+  document.getElementById('f-cat').value = 'ยาแก้ปวด';
+  document.getElementById('f-unit').value = 'เม็ด';
+}
+
+function editMed(id) {
+  const m = medicines.find(x => x.id === id); if (!m) return;
+  document.getElementById('edit-id').value = m.id;
+  document.getElementById('med-modal-title').textContent = 'แก้ไขรายการยา';
+  document.getElementById('f-name').value = m.name;
+  document.getElementById('f-generic').value = m.generic || '';
+  document.getElementById('f-cat').value = m.category || 'ยาแก้ปวด';
+  document.getElementById('f-unit').value = m.unit || 'เม็ด';
+  document.getElementById('f-qty').value = m.qty || 0;
+  document.getElementById('f-min').value = m.min_qty || 0;
+  document.getElementById('f-exp').value = m.exp_date || '';
+  document.getElementById('f-lot').value = m.lot || '';
+  document.getElementById('f-note').value = m.note || '';
+  document.getElementById('ov-add-med').classList.add('open');
+}
+
+async function saveMed() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { toast('กรุณากรอกชื่อยา'); return; }
+  const editId = document.getElementById('edit-id').value;
+  const body = {
+    name, generic: document.getElementById('f-generic').value.trim(),
+    category: document.getElementById('f-cat').value,
+    unit: document.getElementById('f-unit').value,
+    qty: parseInt(document.getElementById('f-qty').value) || 0,
+    min_qty: parseInt(document.getElementById('f-min').value) || 0,
+    exp_date: document.getElementById('f-exp').value,
+    lot: document.getElementById('f-lot').value.trim(),
+    note: document.getElementById('f-note').value.trim()
+  };
+  if (editId) await api('/api/medicines/' + editId, 'PUT', body);
+  else await api('/api/medicines', 'POST', body);
+  await loadMedicines();
+  renderInv(); renderDashboard(); updateAlertBadge();
+  closeModal('add-med');
+  toast(editId ? 'แก้ไขข้อมูลแล้ว' : 'เพิ่มรายการยาแล้ว');
+}
+
+function delMed(id, name) {
+  showConfirm(`ลบ "${name}" ออกจากระบบ?`, 'ไม่สามารถย้อนกลับได้', async () => {
+    await api('/api/medicines/' + id, 'DELETE');
+    await loadMedicines(); renderInv(); renderDashboard(); updateAlertBadge();
+    toast('ลบรายการแล้ว');
+  });
+}
+
+// ─── DISPENSE CRUD ───────────────────────────────────────────
+async function saveDisp() {
+  const name = document.getElementById('d-name').value.trim();
+  const medId = document.getElementById('d-med').value;
+  const qty = parseInt(document.getElementById('d-qty').value) || 1;
+  if (!name) { toast('กรุณากรอกชื่อนักเรียน'); return; }
+  if (!medId) { toast('กรุณาเลือกยา'); return; }
+  const res = await api('/api/dispenses', 'POST', {
+    student_name: name, class_room: document.getElementById('d-cls').value.trim(),
+    med_id: medId, qty, symptom: document.getElementById('d-sym').value.trim(), source: 'staff'
+  });
+  if (res.error) { toast(res.error); return; }
+  await Promise.all([loadMedicines(), loadDispenses()]);
+  renderDisp(); renderDashboard(); updateAlertBadge();
+  closeModal('disp-form');
+  toast('บันทึกการจ่ายยาแล้ว');
+}
+
+function delDisp(id) {
+  showConfirm('ลบบันทึกการจ่ายยานี้?', 'จะไม่คืนสต็อกอัตโนมัติ', async () => {
+    await api('/api/dispenses/' + id, 'DELETE');
+    await loadDispenses(); renderDisp(); renderDashboard();
+    toast('ลบบันทึกแล้ว');
+  });
+}
+
+// ─── RECEIVE CRUD ────────────────────────────────────────────
+async function saveRecv() {
+  const medId = document.getElementById('r-med').value;
+  const qty = parseInt(document.getElementById('r-qty').value) || 0;
+  if (!medId) { toast('กรุณาเลือกยา'); return; }
+  if (qty <= 0) { toast('กรุณากรอกจำนวน'); return; }
+  const res = await api('/api/receives', 'POST', {
+    med_id: medId, qty,
+    lot: document.getElementById('r-lot').value.trim(),
+    exp_date: document.getElementById('r-exp').value,
+    source: document.getElementById('r-src').value.trim(),
+    received_date: document.getElementById('r-date').value || today()
+  });
+  if (res.error) { toast(res.error); return; }
+  await Promise.all([loadMedicines(), loadReceives()]);
+  renderRecv(); renderDashboard(); updateAlertBadge();
+  closeModal('recv-form');
+  toast('รับยาเข้าคลังแล้ว');
+}
+
+function delRecv(id) {
+  showConfirm('ลบบันทึกการรับยานี้?', 'จะไม่ปรับสต็อกอัตโนมัติ', async () => {
+    await api('/api/receives/' + id, 'DELETE');
+    await loadReceives(); renderRecv();
+    toast('ลบบันทึกแล้ว');
+  });
+}
+
+// ─── SETTINGS ────────────────────────────────────────────────
+async function loadSettingsUI() {
+  const s = await api('/api/settings');
+  document.getElementById('s-org').value = s.org_name || '';
+  document.getElementById('s-user').value = s.admin_name || '';
+}
+async function saveSettings() {
+  await api('/api/settings', 'PUT', {
+    org_name: document.getElementById('s-org').value.trim(),
+    admin_name: document.getElementById('s-user').value.trim()
+  });
+  await loadSettings();
+  toast('บันทึกการตั้งค่าแล้ว');
+}
+
+// ─── QR CODE ─────────────────────────────────────────────────
+async function showQR() {
+  const data = await api('/api/qr');
+  document.getElementById('qr-img').src = data.qr;
+  document.getElementById('qr-url').textContent = data.url;
+  openModal('qr');
+}
+
+function printQR() {
+  const img = document.getElementById('qr-img').src;
+  const url = document.getElementById('qr-url').textContent;
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>QR Code - MedStock</title>
+  <style>body{font-family:sans-serif;text-align:center;padding:40px;}img{width:300px;height:300px;border:1px solid #ddd;border-radius:12px;}p{color:#666;font-size:14px;margin-top:12px;}h2{margin-bottom:8px;font-size:20px;}@media print{button{display:none;}}</style></head><body>
+  <h2>ฟอร์มขอรับยา — สวัสดิการนักเรียน</h2><p>สแกน QR Code นี้ด้วยมือถือ</p>
+  <img src="${img}" alt="QR Code"><p style="margin-top:8px;font-size:12px;">${url}</p>
+  <button onclick="window.print()" style="margin-top:20px;padding:10px 24px;background:#1D9E75;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;">พิมพ์</button>
+  </body></html>`);
+}
+
+// ─── INIT ────────────────────────────────────────────────────
+if (token) startApp();
+</script>
+</body>
+</html>
