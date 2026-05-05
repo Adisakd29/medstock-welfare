@@ -480,7 +480,8 @@ async function loadSettings() {
 function today() { return new Date().toISOString().slice(0,10); }
 function fmtDT(d) {
   if (!d) return '—';
-  const dt = new Date(new Date(d).toLocaleString('en-US', {timeZone:'Asia/Bangkok'}));
+  const s = String(d).replace(' ','T').replace(/(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/, '+07:00');
+  const dt = new Date(s);
   return `${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()+543} ${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}`;
 }
 function fmtDate(d) {
