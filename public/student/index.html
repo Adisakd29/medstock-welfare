@@ -38,7 +38,13 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
 .allergy-box label{color:var(--red);font-size:14px;font-weight:500;margin-bottom:6px;display:block;}
 .allergy-box input{width:100%;padding:10px 12px;border:1.5px solid #f09595;border-radius:8px;font-family:'Sarabun',sans-serif;font-size:14px;background:#fff;outline:none;}
 .allergy-box input:focus{border-color:var(--red);}
-.qty-row{display:flex;align-items:center;gap:10px;}
+.symptom-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.sym-opt{display:flex;align-items:center;cursor:pointer;}
+.sym-opt input[type=checkbox]{display:none;}
+.sym-opt span{display:flex;align-items:center;gap:7px;width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-weight:500;color:var(--text2);transition:all 0.15s;}
+.sym-opt input[type=checkbox]:checked + span{border-color:var(--green);background:var(--green-light);color:var(--green-dark);}
+.sym-opt span::before{content:'';width:16px;height:16px;border-radius:4px;border:2px solid currentColor;display:inline-block;flex-shrink:0;transition:all 0.15s;}
+.sym-opt input[type=checkbox]:checked + span::before{background:var(--green);border-color:var(--green);content:'✓';color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;}
 .qty-btn{width:40px;height:40px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:20px;color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
 .qty-btn:active{background:var(--bg);}
 .qty-input{text-align:center;font-size:18px;font-weight:600;width:60px;flex-shrink:0;border:1.5px solid var(--border);border-radius:8px;padding:8px;}
@@ -98,8 +104,22 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
   <div class="card">
     <div class="section-title">รายการยาที่ต้องการ</div>
     <div class="form-group">
-      <label>ลักษณะอาการ</label>
-      <textarea id="symptom" placeholder="เช่น ปวดศีรษะ เจ็บคอ ปวดท้อง มีไข้..."></textarea>
+      <label>ลักษณะอาการ (เลือกได้หลายข้อ)</label>
+      <div class="symptom-grid">
+        <label class="sym-opt"><input type="checkbox" value="ปวดศีรษะ"><span>🤕 ปวดศีรษะ</span></label>
+        <label class="sym-opt"><input type="checkbox" value="มีไข้"><span>🌡️ มีไข้</span></label>
+        <label class="sym-opt"><input type="checkbox" value="เจ็บคอ"><span>😮 เจ็บคอ</span></label>
+        <label class="sym-opt"><input type="checkbox" value="ไอ"><span>😷 ไอ</span></label>
+        <label class="sym-opt"><input type="checkbox" value="น้ำมูกไหล"><span>🤧 น้ำมูกไหล</span></label>
+        <label class="sym-opt"><input type="checkbox" value="ปวดท้อง"><span>🤢 ปวดท้อง</span></label>
+        <label class="sym-opt"><input type="checkbox" value="ท้องเสีย"><span>🚽 ท้องเสีย</span></label>
+        <label class="sym-opt"><input type="checkbox" value="คลื่นไส้/อาเจียน"><span>🤮 คลื่นไส้</span></label>
+        <label class="sym-opt"><input type="checkbox" value="ปวดกล้ามเนื้อ"><span>💪 ปวดกล้ามเนื้อ</span></label>
+        <label class="sym-opt"><input type="checkbox" value="ผื่นคัน"><span>🔴 ผื่นคัน</span></label>
+        <label class="sym-opt"><input type="checkbox" value="เวียนหัว"><span>😵 เวียนหัว</span></label>
+        <label class="sym-opt"><input type="checkbox" value="บาดแผล/ถลอก"><span>🩹 บาดแผล/ถลอก</span></label>
+      </div>
+      <input type="text" id="symptom-other" placeholder="อื่นๆ โปรดระบุ..." style="margin-top:8px;">
     </div>
     <div class="form-group">
       <label>เลือกยา <span class="required">*</span></label>
@@ -181,7 +201,10 @@ async function submitForm(){
   const name=document.getElementById('student_name').value.trim();
   const dept=document.getElementById('department').value.trim();
   const cls=document.getElementById('class_room').value.trim();
-  const symptom=document.getElementById('symptom').value.trim();
+  const checked=[...document.querySelectorAll('.symptom-grid input[type=checkbox]:checked')].map(c=>c.value);
+  const other=document.getElementById('symptom-other').value.trim();
+  if(other) checked.push(other);
+  const symptom=checked.join(', ');
   const medId=document.getElementById('med_id').value;
   const qty=parseInt(document.getElementById('qty').value)||1;
   const allergy=document.querySelector('input[name=allergy]:checked')?.value;
@@ -213,7 +236,8 @@ async function submitForm(){
 }
 function resetForm(){
   document.querySelectorAll('input[name=prefix],input[name=allergy]').forEach(r=>r.checked=false);
-  ['student_name','department','class_room','symptom','allergy_med'].forEach(id=>document.getElementById(id).value='');
+  document.querySelectorAll('.symptom-grid input[type=checkbox]').forEach(c=>c.checked=false);
+  ['student_name','department','class_room','allergy_med','symptom-other'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('med_id').value='';document.getElementById('qty').value='1';
   document.getElementById('med-info').classList.remove('show');document.getElementById('qty-unit').textContent='';
   document.getElementById('allergy-box').classList.remove('show');
