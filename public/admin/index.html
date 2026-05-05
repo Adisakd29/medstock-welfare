@@ -232,7 +232,14 @@ tr:hover td{background:#fafaf8;}
   <!-- DISPENSE -->
   <div class="page" id="page-dispense">
     <div class="ph"><div><div class="pt">บันทึกการจ่ายยา</div><div class="ps">ประวัติการรับยา (รวม QR + เจ้าหน้าที่)</div></div>
-      <button class="btn btn-p" onclick="openModal('disp-form')">+ บันทึกด้วยตนเอง</button></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="exportExcel()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          ส่งออก Excel
+        </button>
+        <button class="btn btn-p" onclick="openModal('disp-form')">+ บันทึกด้วยตนเอง</button>
+      </div>
+    </div>
     <div class="card" style="padding-bottom:0;">
       <div class="sr">
         <input type="date" id="disp-date" onchange="renderDisp()" style="width:150px;">
@@ -476,11 +483,71 @@ async function loadSettings() {
   if (s.org_name) { document.getElementById('org-tag').textContent = s.org_name; }
 }
 
+// ─── EXPORT EXCEL ────────────────────────────────────────────
+async function exportExcel() {
+  // Load SheetJS dynamically
+  if (!window.XLSX) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  const fd = document.getElementById('disp-filter-date')?.value || '';
+  const q = document.getElementById('disp-q')?.value || '';
+
+  // กรองข้อมูลตามที่แสดงอยู่บนหน้าจอ
+  let data = [...dispenses];
+  if (fd) data = data.filter(d => d.created_at && d.created_at.startsWith(fd));
+  if (q) data = data.filter(d =>
+    d.student_name.toLowerCase().includes(q.toLowerCase()) ||
+    (d.med_name||'').toLowerCase().includes(q.toLowerCase())
+  );
+
+  if (!data.length) { toast('ไม่มีข้อมูลสำหรับส่งออก'); return; }
+
+  // สร้างแถวข้อมูล
+  const rows = data.map((d, i) => ({
+    'ลำดับ': i + 1,
+    'วันที่/เวลา': fmtDT(d.created_at),
+    'คำนำหน้า + ชื่อ-นามสกุล': d.student_name,
+    'แผนกวิชา': d.student_id || '',
+    'ระดับชั้น': d.class_room || '',
+    'ยาที่จ่าย': d.med_name,
+    'จำนวน': d.qty,
+    'หน่วย': d.unit,
+    'อาการ': d.symptom || '',
+    'ประวัติแพ้ยา': d.allergy || 'ไม่แพ้ยา',
+    'ช่องทาง': d.source === 'qr' ? 'QR Code' : 'เจ้าหน้าที่',
+    'ผู้จ่ายยา': d.dispenser || '',
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+
+  // ปรับความกว้างคอลัมน์
+  ws['!cols'] = [
+    {wch:6},{wch:18},{wch:22},{wch:16},{wch:12},
+    {wch:20},{wch:8},{wch:8},{wch:20},{wch:16},{wch:10},{wch:14}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'บันทึกการจ่ายยา');
+
+  // ชื่อไฟล์
+  const dateStr = fd || today();
+  const orgName = document.getElementById('org-tag')?.textContent || 'MedStock';
+  XLSX.writeFile(wb, `${orgName}_จ่ายยา_${dateStr}.xlsx`);
+  toast(`ส่งออก Excel แล้ว (${data.length} รายการ)`);
+}
+
 // ─── UTILS ───────────────────────────────────────────────────
 function today() { return new Date().toISOString().slice(0,10); }
 function fmtDT(d) {
   if (!d) return '—';
-  const dt = new Date(d);
+  const s = String(d).replace(' ','T').replace(/(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/, '+07:00');
+  const dt = new Date(s);
   return `${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()+543} ${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}`;
 }
 function fmtDate(d) {
