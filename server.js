@@ -10,26 +10,45 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'welfare2567';
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
-const dbPath = path.join(__dirname, 'db', 'medstock.db');
+// DB อยู่ใน Volume ที่ /app/db
+const dbPath = path.join('/app/db', 'medstock.db');
 const db = new sqlite3.Database(dbPath);
 
 const run = (sql, p=[]) => new Promise((res,rej) => db.run(sql, p, function(e){ e?rej(e):res(this); }));
 const get = (sql, p=[]) => new Promise((res,rej) => db.get(sql, p, (e,r) => e?rej(e):res(r)));
 const all = (sql, p=[]) => new Promise((res,rej) => db.all(sql, p, (e,r) => e?rej(e):res(r)));
 
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function nowBKK() { return new Date().toLocaleString('sv-SE', {timeZone:'Asia/Bangkok'}).replace('T',' '); }
+
 async function initDB() {
   await run('PRAGMA journal_mode=WAL');
-  await run(`CREATE TABLE IF NOT EXISTS medicines (id TEXT PRIMARY KEY, name TEXT NOT NULL, generic TEXT DEFAULT '', category TEXT DEFAULT 'อื่นๆ', unit TEXT DEFAULT 'เม็ด', qty INTEGER DEFAULT 0, min_qty INTEGER DEFAULT 10, exp_date TEXT DEFAULT '', lot TEXT DEFAULT '', note TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')))`);
-  await run(`CREATE TABLE IF NOT EXISTS dispenses (id TEXT PRIMARY KEY, student_name TEXT NOT NULL, student_id TEXT DEFAULT '', class_room TEXT DEFAULT '', med_id TEXT NOT NULL, med_name TEXT NOT NULL, unit TEXT NOT NULL, qty INTEGER NOT NULL, symptom TEXT DEFAULT '', dispenser TEXT DEFAULT 'นักเรียนแจ้งเอง', allergy TEXT DEFAULT 'ไม่แพ้ยา', source TEXT DEFAULT 'qr', created_at TEXT DEFAULT (datetime('now','localtime')))`);
-  await run(`CREATE TABLE IF NOT EXISTS receives (id TEXT PRIMARY KEY, med_id TEXT NOT NULL, med_name TEXT NOT NULL, unit TEXT NOT NULL, qty INTEGER NOT NULL, lot TEXT DEFAULT '', exp_date TEXT DEFAULT '', source TEXT DEFAULT '', note TEXT DEFAULT '', received_date TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')))`);
-  await run(`CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, created_at TEXT DEFAULT (datetime('now','localtime')))`);
+  await run(`CREATE TABLE IF NOT EXISTS medicines (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, generic TEXT DEFAULT '',
+    category TEXT DEFAULT 'อื่นๆ', unit TEXT DEFAULT 'เม็ด',
+    qty INTEGER DEFAULT 0, min_qty INTEGER DEFAULT 10,
+    exp_date TEXT DEFAULT '', lot TEXT DEFAULT '', note TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now','localtime')))`);
+  await run(`CREATE TABLE IF NOT EXISTS dispenses (
+    id TEXT PRIMARY KEY, student_name TEXT NOT NULL, student_id TEXT DEFAULT '',
+    class_room TEXT DEFAULT '', med_id TEXT NOT NULL, med_name TEXT NOT NULL,
+    unit TEXT NOT NULL, qty INTEGER NOT NULL, symptom TEXT DEFAULT '',
+    allergy TEXT DEFAULT 'ไม่แพ้ยา', dispenser TEXT DEFAULT 'นักเรียนแจ้งเอง',
+    source TEXT DEFAULT 'qr', created_at TEXT DEFAULT (datetime('now','localtime')))`);
+  await run(`CREATE TABLE IF NOT EXISTS receives (
+    id TEXT PRIMARY KEY, med_id TEXT NOT NULL, med_name TEXT NOT NULL,
+    unit TEXT NOT NULL, qty INTEGER NOT NULL, lot TEXT DEFAULT '',
+    exp_date TEXT DEFAULT '', source TEXT DEFAULT '', note TEXT DEFAULT '',
+    received_date TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')))`);
+  await run(`CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY, created_at TEXT DEFAULT (datetime('now','localtime')))`);
   await run(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`);
   const org = await get("SELECT value FROM settings WHERE key='org_name'");
   if (!org) {
     await run("INSERT OR IGNORE INTO settings VALUES ('org_name','สถานศึกษา')");
     await run("INSERT OR IGNORE INTO settings VALUES ('admin_name','ผู้ดูแลระบบ')");
   }
-  console.log('Database ready');
+  console.log('✅ SQLite ready at', dbPath);
 }
 
 app.use(cors());
@@ -43,8 +62,6 @@ async function requireAuth(req, res, next) {
   if (!session) return res.status(401).json({ error: 'Invalid token' });
   next();
 }
-
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
 app.post('/api/login', async (req, res) => {
   if (req.body.password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'รหัสผ่านไม่ถูกต้อง' });
@@ -109,7 +126,7 @@ app.get('/api/dispenses', requireAuth, async (req, res) => {
 });
 
 app.post('/api/dispenses', async (req, res) => {
-  const { student_name, student_id, class_room, med_id, qty, symptom, source } = req.body;
+  const { student_name, student_id, class_room, med_id, qty, symptom, allergy, source } = req.body;
   if (!student_name || !med_id) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
   const med = await get('SELECT * FROM medicines WHERE id = ?', [med_id]);
   if (!med) return res.status(404).json({ error: 'ไม่พบรายการยา' });
@@ -117,8 +134,8 @@ app.post('/api/dispenses', async (req, res) => {
   if (amount > med.qty) return res.status(400).json({ error: `ยาไม่เพียงพอ (คงเหลือ ${med.qty} ${med.unit})` });
   await run('UPDATE medicines SET qty = qty - ? WHERE id = ?', [amount, med_id]);
   const id = uid();
-  await run(`INSERT INTO dispenses (id,student_name,student_id,class_room,med_id,med_name,unit,qty,symptom,allergy,source) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-    [id, student_name, student_id||'', class_room||'', med_id, med.name, med.unit, amount, symptom||'', req.body.allergy||'ไม่แพ้ยา', source||'qr']);
+  await run(`INSERT INTO dispenses (id,student_name,student_id,class_room,med_id,med_name,unit,qty,symptom,allergy,source,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [id, student_name, student_id||'', class_room||'', med_id, med.name, med.unit, amount, symptom||'', allergy||'ไม่แพ้ยา', source||'qr', nowBKK()]);
   res.json({ id, med_name: med.name, unit: med.unit, qty: amount, ok: true });
 });
 
@@ -140,8 +157,8 @@ app.post('/api/receives', requireAuth, async (req, res) => {
   if (exp_date) await run('UPDATE medicines SET exp_date = ? WHERE id = ?', [exp_date, med_id]);
   if (lot) await run('UPDATE medicines SET lot = ? WHERE id = ?', [lot, med_id]);
   const id = uid();
-  await run(`INSERT INTO receives (id,med_id,med_name,unit,qty,lot,exp_date,source,note,received_date) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-    [id, med_id, med.name, med.unit, amount, lot||'', exp_date||'', source||'', note||'', received_date||new Date().toISOString().slice(0,10)]);
+  await run(`INSERT INTO receives (id,med_id,med_name,unit,qty,lot,exp_date,source,note,received_date,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    [id, med_id, med.name, med.unit, amount, lot||'', exp_date||'', source||'', note||'', received_date||nowBKK().slice(0,10), nowBKK()]);
   res.json({ ok: true });
 });
 
@@ -163,8 +180,6 @@ app.get('/', (req, res) => res.redirect('/admin'));
 
 initDB().then(() => {
   app.listen(PORT, () => {
-    console.log(`MedStock running on ${BASE_URL}`);
-    console.log(`Admin: ${BASE_URL}/admin  |  Student: ${BASE_URL}/student`);
-    console.log(`Password: ${ADMIN_PASSWORD}`);
+    console.log(`🏥 MedStock on port ${PORT} | Admin: ${BASE_URL}/admin`);
   });
 }).catch(err => { console.error('DB init failed:', err); process.exit(1); });
