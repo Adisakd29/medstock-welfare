@@ -481,7 +481,7 @@ function today() { return new Date().toISOString().slice(0,10); }
 function fmtDT(d) {
   if (!d) return '—';
   const dt = new Date(d);
-  return `${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()-543+2500} ${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}`;
+  return `${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()+543} ${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}`;
 }
 function fmtDate(d) {
   if (!d || d === '') return '—';
