@@ -287,6 +287,7 @@ tr:hover td{background:#fafaf8;}
     <div class="ph">
       <div><div class="pt">ใบเบิกยาครู</div><div class="ps">ครูขอเบิกยาจากห้องพยาบาล</div></div>
       <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="showTeacherQR()" style="background:#E6F1FB;color:#185FA5;border-color:#185FA5;">📱 QR ครู</button>
         <button class="btn" onclick="exportReqExcel()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           ส่งออก Excel
@@ -493,7 +494,7 @@ async function startApp() {
   await Promise.all([loadMedicines(), loadSettings()]);
   await Promise.all([loadDispenses(), loadReceives()]);
   renderDashboard();
-  updateAlertBadge();
+  updateAlertBadge(); loadRequisitions().then(updateReqBadge);
   // Poll every 8 seconds for new dispenses (real-time QR updates)
   pollTimer = setInterval(async () => {
     await loadDispenses();
@@ -518,7 +519,7 @@ document.querySelectorAll('.nav-i').forEach(el => {
     if (pg === 'receive') renderRecv();
     if (pg === 'alerts') renderAlerts();
     if (pg === 'settings') loadSettingsUI();
-    if (pg === 'requisition') { populateSel('rq-med'); renderReq(); }
+    if (pg === 'requisition') { populateSel('rq-med'); loadRequisitions().then(renderReq); }
   });
 });
 
@@ -934,9 +935,18 @@ function printQR() {
 // ─── INIT ────────────────────────────────────────────────────
 if (token) startApp();
 // ─── REQUISITION ─────────────────────────────────────────────
-let requisitions = JSON.parse(localStorage.getItem('medstock_requisitions') || '[]');
+let requisitions = [];
 
-function saveReqs() { localStorage.setItem('medstock_requisitions', JSON.stringify(requisitions)); }
+async function loadRequisitions() {
+  try {
+    const fs = document.getElementById('req-filter-status')?.value || '';
+    const fd = document.getElementById('req-filter-date')?.value || '';
+    let url = '/api/requisitions?x=1';
+    if (fs) url += '&status='+encodeURIComponent(fs);
+    if (fd) url += '&date='+fd;
+    requisitions = await api(url);
+  } catch(e) { requisitions = []; }
+}
 
 function updateReqBadge() {
   const n = requisitions.filter(r => r.status === 'รออนุมัติ').length;
@@ -944,6 +954,7 @@ function updateReqBadge() {
   if (b) { b.textContent = n; b.style.display = n ? 'inline' : 'none'; }
 }
 
+async function reloadAndRenderReq() { await loadRequisitions(); renderReq(); }
 function renderReq() {
   const fs = document.getElementById('req-filter-status')?.value || '';
   const fd = document.getElementById('req-filter-date')?.value || '';
@@ -1000,7 +1011,8 @@ function processReq(action) {
   requisitions[idx].status = action;
   requisitions[idx].note = note;
   requisitions[idx].processed_at = nowBKK();
-  saveReqs();
+  await api('/api/requisitions/'+id,'PUT',{status:action,note});
+  await loadRequisitions();
   closeModal('req-action');
   renderReq();
   toast(`${action}เรียบร้อย`);
@@ -1015,15 +1027,14 @@ function saveReq() {
   const med = medicines.find(m => m.id === medId);
   if (!med) return;
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
-  requisitions.unshift({
-    id, teacher,
-    dept: document.getElementById('rq-dept').value.trim(),
-    med_id: medId, med_name: med.name, unit: med.unit, qty,
+  const res2 = await api('/api/requisitions', 'POST', {
+    teacher, dept: document.getElementById('rq-dept').value.trim(),
+    med_id: medId, qty,
     reason: document.getElementById('rq-reason').value.trim(),
-    status: 'รออนุมัติ', note: '',
-    created_at: nowBKK(), processed_at: ''
+    source: 'staff'
   });
-  saveReqs();
+  if (res2.error) { toast(res2.error); return; }
+  await loadRequisitions();
   closeModal('req-form');
   ['rq-teacher','rq-dept','rq-reason'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('rq-qty').value = '1';
@@ -1032,12 +1043,35 @@ function saveReq() {
 }
 
 function delReq(id) {
-  showConfirm('ลบใบเบิกนี้?', '', () => {
-    requisitions = requisitions.filter(r => r.id !== id);
-    saveReqs(); renderReq(); toast('ลบแล้ว');
+  showConfirm('ลบใบเบิกนี้?', '', async () => {
+    await api('/api/requisitions/'+id, 'DELETE');
+    await loadRequisitions(); renderReq(); toast('ลบแล้ว');
   });
 }
 
+
+async function showTeacherQR() {
+  const data = await api('/api/qr/teacher');
+  const w = window.open('','_blank','width=480,height=600');
+  const org = document.getElementById('org-tag')?.textContent || 'สถานศึกษา';
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>QR ใบเบิกยาครู</title>
+  <style>body{font-family:sans-serif;text-align:center;padding:32px;background:#F0F4F8;}
+  img{width:260px;height:260px;border:2px solid #185FA5;border-radius:16px;}
+  h2{color:#185FA5;margin-bottom:8px;font-size:20px;}
+  p{color:#666;font-size:13px;margin:6px 0;}
+  .url{font-size:11px;color:#999;word-break:break-all;margin-top:8px;padding:6px;background:#eee;border-radius:6px;}
+  button{margin-top:16px;padding:10px 28px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;}
+  @media print{button{display:none;}}</style></head>
+  <body>
+  <h2>📋 ใบขอเบิกยาครู</h2>
+  <p>${org} · งานสวัสดิการนักเรียน</p>
+  <img src="${data.qr}" alt="QR Code">
+  <div class="url">${data.url}</div>
+  <p style="margin-top:12px;color:#185FA5;font-size:14px;">ครูสแกน QR นี้เพื่อกรอกใบขอเบิกยา</p>
+  <button onclick="window.print()">🖨️ พิมพ์ QR</button>
+  </body></html>`);
+}
 async function exportReqExcel() {
   if (!window.XLSX) {
     await new Promise((res,rej) => {
