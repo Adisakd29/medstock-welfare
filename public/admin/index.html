@@ -246,7 +246,7 @@ tr:hover td{background:#fafaf8;}
         <input type="date" id="disp-date" onchange="renderDisp()" style="width:150px;">
         <input type="text" id="disp-q" placeholder="ค้นหาชื่อ..." oninput="renderDisp()" style="flex:1;">
       </div>
-      <div class="tw"><table><thead><tr><th>วัน/เวลา</th><th>ชื่อ</th><th>ชั้น/ห้อง</th><th>ยา</th><th>จำนวน</th><th>อาการ</th><th>ช่องทาง</th><th></th></tr></thead><tbody id="disp-body"></tbody></table></div>
+      <div class="tw"><table><thead><tr><th>วัน/เวลา</th><th>ชื่อ-นามสกุล</th><th>แผนกวิชา</th><th>ระดับชั้น</th><th>ยา</th><th>จำนวน</th><th>อาการ</th><th>แพ้ยา</th><th>ช่องทาง</th><th></th></tr></thead><tbody id="disp-body"></tbody></table></div>
     </div>
   </div>
 
@@ -588,7 +588,7 @@ async function exportExcel() {
   const rows = data.map((d, i) => ({
     'ลำดับ': i + 1,
     'วันที่/เวลา': fmtDT(d.created_at),
-    'คำนำหน้า + ชื่อ-นามสกุล': d.student_name,
+    'ชื่อ-นามสกุล': d.student_name,
     'แผนกวิชา': d.student_id || '',
     'ระดับชั้น': d.class_room || '',
     'ยาที่จ่าย': d.med_name,
@@ -718,15 +718,17 @@ function renderDisp() {
   if (q) data = data.filter(d => d.student_name.toLowerCase().includes(q) || (d.med_name||'').toLowerCase().includes(q));
   document.getElementById('disp-body').innerHTML = data.length
     ? data.map(d => `<tr>
-        <td style="white-space:nowrap;">${fmtDT(d.created_at)}</td>
+        <td style="white-space:nowrap;font-size:12px;">${fmtDT(d.created_at)}</td>
         <td><strong>${d.student_name}</strong></td>
+        <td>${d.student_id||'—'}</td>
         <td>${d.class_room||'—'}</td>
         <td>${d.med_name}</td>
         <td>${d.qty} ${d.unit}</td>
-        <td>${d.symptom||'—'}</td>
+        <td style="max-width:140px;font-size:12px;">${d.symptom||'—'}</td>
+        <td><span class="pill ${d.allergy&&d.allergy!=='ไม่แพ้ยา'?'p-danger':'p-ok'}" style="font-size:11px;">${d.allergy||'ไม่แพ้ยา'}</span></td>
         <td><span class="pill ${d.source==='qr'?'p-qr':'p-ok'}">${d.source==='qr'?'QR':'เจ้าหน้าที่'}</span></td>
         <td><button class="btn btn-sm btn-d" onclick="delDisp('${d.id}')">ลบ</button></td></tr>`).join('')
-    : '<tr class="er"><td colspan="8">ไม่พบข้อมูล</td></tr>';
+    : '<tr class="er"><td colspan="10">ไม่พบข้อมูล</td></tr>';
 }
 
 // ─── RECEIVE LIST ────────────────────────────────────────────
