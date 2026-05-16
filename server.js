@@ -43,6 +43,12 @@ async function initDB() {
   await run(`CREATE TABLE IF NOT EXISTS sessions (
     token TEXT PRIMARY KEY, created_at TEXT DEFAULT (datetime('now','localtime')))`);
   await run(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`);
+  await run(`CREATE TABLE IF NOT EXISTS requisitions (
+    id TEXT PRIMARY KEY, teacher TEXT NOT NULL, dept TEXT DEFAULT '',
+    med_id TEXT NOT NULL, med_name TEXT NOT NULL, unit TEXT NOT NULL,
+    qty INTEGER NOT NULL, reason TEXT DEFAULT '', status TEXT DEFAULT 'รออนุมัติ',
+    note TEXT DEFAULT '', source TEXT DEFAULT 'qr',
+    processed_at TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')))`);
   const org = await get("SELECT value FROM settings WHERE key='org_name'");
   if (!org) {
     await run("INSERT OR IGNORE INTO settings VALUES ('org_name','สถานศึกษา')");
@@ -174,7 +180,50 @@ app.get('/api/qr', requireAuth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// ─── REQUISITIONS ─────────────────────────────────────────────
+app.get('/api/requisitions', requireAuth, async (req, res) => {
+  const { status, date } = req.query;
+  let q = 'SELECT * FROM requisitions WHERE 1=1'; const params = [];
+  if (status) { q += ' AND status = ?'; params.push(status); }
+  if (date) { q += ' AND created_at LIKE ?'; params.push(date+'%'); }
+  res.json(await all(q+' ORDER BY created_at DESC', params));
+});
+
+app.post('/api/requisitions', async (req, res) => {
+  const { teacher, dept, med_id, qty, reason, source } = req.body;
+  if (!teacher || !med_id) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+  const med = await get('SELECT * FROM medicines WHERE id = ?', [med_id]);
+  if (!med) return res.status(404).json({ error: 'ไม่พบรายการยา' });
+  const id = uid();
+  await run(`INSERT INTO requisitions (id,teacher,dept,med_id,med_name,unit,qty,reason,source,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    [id, teacher, dept||'', med_id, med.name, med.unit, parseInt(qty)||1, reason||'', source||'qr', nowBKK()]);
+  res.json({ id, med_name: med.name, unit: med.unit, ok: true });
+});
+
+app.put('/api/requisitions/:id', requireAuth, async (req, res) => {
+  const { status, note } = req.body;
+  await run('UPDATE requisitions SET status=?, note=?, processed_at=? WHERE id=?',
+    [status, note||'', nowBKK(), req.params.id]);
+  res.json({ ok: true });
+});
+
+app.delete('/api/requisitions/:id', requireAuth, async (req, res) => {
+  await run('DELETE FROM requisitions WHERE id = ?', [req.params.id]);
+  res.json({ ok: true });
+});
+
+// QR for teacher form
+app.get('/api/qr/teacher', requireAuth, async (req, res) => {
+  const url = `${BASE_URL}/teacher`;
+  try {
+    const dataUrl = await qrcode.toDataURL(url, { width:400, margin:2, color:{ dark:'#185FA5', light:'#ffffff' } });
+    res.json({ qr: dataUrl, url });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/student', (req, res) => res.sendFile(path.join(__dirname, 'public', 'student', 'index.html')));
+app.get('/teacher', (req, res) => res.sendFile(path.join(__dirname, 'public', 'teacher', 'index.html')));
 app.get('/admin*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
 app.get('/', (req, res) => res.redirect('/admin'));
 
