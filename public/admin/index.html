@@ -191,6 +191,7 @@ tr:hover td{background:#fafaf8;}
   <div class="nav-s">
     <div class="nav-lbl">ระบบ</div>
     <div class="nav-i" data-page="alerts"><svg viewBox="0 0 16 16"><path d="M8 1.5a5 5 0 0 1 5 5v2.5l1 2H2l1-2V6.5a5 5 0 0 1 5-5z"/><path d="M6 13.5a2 2 0 0 0 4 0" stroke-linecap="round"/></svg>การแจ้งเตือน<span class="nav-badge" id="alert-badge" style="display:none">0</span></div>
+    <div class="nav-i" data-page="requisition"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M5 8h6M8 5v6" stroke-linecap="round"/></svg>ใบเบิกยาครู<span class="nav-badge" id="req-badge" style="display:none;background:#E6F1FB;color:#185FA5;">0</span></div>
     <div class="nav-i" data-page="settings"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke-linecap="round"/></svg>ตั้งค่า</div>
   </div>
 </div>
@@ -281,6 +282,47 @@ tr:hover td{background:#fafaf8;}
     </div>
   </div>
 
+  <!-- REQUISITION PAGE -->
+  <div class="page" id="page-requisition">
+    <div class="ph">
+      <div><div class="pt">ใบเบิกยาครู</div><div class="ps">ครูขอเบิกยาจากห้องพยาบาล</div></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="exportReqExcel()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          ส่งออก Excel
+        </button>
+        <button class="btn btn-p" onclick="openModal('req-form')">+ สร้างใบเบิก</button>
+      </div>
+    </div>
+
+    <!-- สถิติ -->
+    <div class="metrics" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">
+      <div class="metric"><div class="mlbl">ใบเบิกทั้งหมด</div><div class="mval" id="req-total">0</div><div class="msub">รายการ</div></div>
+      <div class="metric"><div class="mlbl">รออนุมัติ</div><div class="mval warn" id="req-pending">0</div><div class="msub">รายการ</div></div>
+      <div class="metric"><div class="mlbl">อนุมัติแล้ว</div><div class="mval ok" id="req-approved">0</div><div class="msub">รายการ</div></div>
+    </div>
+
+    <div class="card" style="padding-bottom:0;">
+      <div class="ch" style="margin-bottom:12px;">
+        <div class="ct">รายการใบเบิกทั้งหมด</div>
+        <div style="display:flex;gap:8px;">
+          <select id="req-filter-status" onchange="renderReq()" style="width:130px;font-size:12px;padding:5px 8px;">
+            <option value="">ทุกสถานะ</option>
+            <option value="รออนุมัติ">รออนุมัติ</option>
+            <option value="อนุมัติแล้ว">อนุมัติแล้ว</option>
+            <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
+          </select>
+          <input type="date" id="req-filter-date" onchange="renderReq()" style="width:140px;font-size:12px;padding:5px 8px;">
+        </div>
+      </div>
+      <div class="tw">
+        <table><thead><tr><th>วันที่</th><th>ครูผู้เบิก</th><th>แผนก/ห้อง</th><th>รายการยา</th><th>จำนวน</th><th>หน่วย</th><th>เหตุผล</th><th>สถานะ</th><th></th></tr></thead>
+        <tbody id="req-body"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+
 </div>
 </div>
 </div><!-- /app -->
@@ -361,6 +403,38 @@ tr:hover td{background:#fafaf8;}
   </div>
 </div>
 
+
+<!-- MODAL: REQUISITION FORM -->
+<div class="ov" id="ov-req-form" onclick="if(event.target===this)closeModal('req-form')">
+  <div class="modal">
+    <div class="mt">สร้างใบเบิกยา</div>
+    <div class="fr">
+      <div class="fg"><label>ชื่อครูผู้เบิก <span class="req">*</span></label><input type="text" id="rq-teacher" placeholder="ชื่อ-นามสกุล"></div>
+      <div class="fg"><label>แผนก/ห้อง</label><input type="text" id="rq-dept" placeholder="เช่น แผนกไฟฟ้า, ห้องพยาบาล"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>ยาที่ขอเบิก <span class="req">*</span></label><select id="rq-med"></select></div>
+      <div class="fg"><label>จำนวน <span class="req">*</span></label><input type="number" id="rq-qty" value="1" min="1"></div>
+    </div>
+    <div class="fg ff" style="margin-top:4px;"><label>เหตุผล/วัตถุประสงค์</label><textarea id="rq-reason" placeholder="เช่น สำรองไว้ประจำห้องเรียน, ใช้ในกิจกรรม..."></textarea></div>
+    <div class="ma"><button class="btn" onclick="closeModal('req-form')">ยกเลิก</button><button class="btn btn-p" onclick="saveReq()">ส่งใบเบิก</button></div>
+  </div>
+</div>
+
+<!-- MODAL: APPROVE/REJECT -->
+<div class="ov" id="ov-req-action" onclick="if(event.target===this)closeModal('req-action')">
+  <div class="modal" style="max-width:400px;">
+    <div class="mt" id="req-action-title">ดำเนินการใบเบิก</div>
+    <input type="hidden" id="req-action-id">
+    <div style="background:var(--bg);border-radius:var(--r);padding:12px;margin-bottom:14px;font-size:13px;" id="req-action-detail"></div>
+    <div class="fg"><label>หมายเหตุ (ถ้ามี)</label><textarea id="req-action-note" placeholder="หมายเหตุการอนุมัติ/ไม่อนุมัติ..." style="height:60px;width:100%;"></textarea></div>
+    <div class="ma">
+      <button class="btn" onclick="closeModal('req-action')">ยกเลิก</button>
+      <button class="btn btn-d" onclick="processReq('ไม่อนุมัติ')">ไม่อนุมัติ</button>
+      <button class="btn btn-p" onclick="processReq('อนุมัติแล้ว')">อนุมัติ</button>
+    </div>
+  </div>
+</div>
 <div class="ov" id="ov-confirm" onclick="if(event.target===this)closeModal('confirm')">
   <div class="modal" style="max-width:360px;">
     <div class="mt">ยืนยันการดำเนินการ</div>
@@ -444,6 +518,7 @@ document.querySelectorAll('.nav-i').forEach(el => {
     if (pg === 'receive') renderRecv();
     if (pg === 'alerts') renderAlerts();
     if (pg === 'settings') loadSettingsUI();
+    if (pg === 'requisition') { populateSel('rq-med'); renderReq(); }
   });
 });
 
@@ -858,6 +933,197 @@ function printQR() {
 
 // ─── INIT ────────────────────────────────────────────────────
 if (token) startApp();
+// ─── REQUISITION ─────────────────────────────────────────────
+let requisitions = JSON.parse(localStorage.getItem('medstock_requisitions') || '[]');
+
+function saveReqs() { localStorage.setItem('medstock_requisitions', JSON.stringify(requisitions)); }
+
+function updateReqBadge() {
+  const n = requisitions.filter(r => r.status === 'รออนุมัติ').length;
+  const b = document.getElementById('req-badge');
+  if (b) { b.textContent = n; b.style.display = n ? 'inline' : 'none'; }
+}
+
+function renderReq() {
+  const fs = document.getElementById('req-filter-status')?.value || '';
+  const fd = document.getElementById('req-filter-date')?.value || '';
+  let data = [...requisitions].sort((a,b) => b.created_at.localeCompare(a.created_at));
+  if (fs) data = data.filter(r => r.status === fs);
+  if (fd) data = data.filter(r => r.created_at.startsWith(fd));
+
+  // stats
+  document.getElementById('req-total').textContent = requisitions.length;
+  document.getElementById('req-pending').textContent = requisitions.filter(r=>r.status==='รออนุมัติ').length;
+  document.getElementById('req-approved').textContent = requisitions.filter(r=>r.status==='อนุมัติแล้ว').length;
+
+  const statusPillReq = s => {
+    if (s==='รออนุมัติ') return '<span class="pill p-warn">รออนุมัติ</span>';
+    if (s==='อนุมัติแล้ว') return '<span class="pill p-ok">อนุมัติแล้ว</span>';
+    if (s==='ไม่อนุมัติ') return '<span class="pill p-danger">ไม่อนุมัติ</span>';
+    return '';
+  };
+
+  document.getElementById('req-body').innerHTML = data.length ? data.map(r => `<tr>
+    <td style="white-space:nowrap;">${fmtDT(r.created_at)}</td>
+    <td><strong>${r.teacher}</strong></td>
+    <td>${r.dept||'—'}</td>
+    <td>${r.med_name}</td>
+    <td>${r.qty}</td>
+    <td>${r.unit}</td>
+    <td>${r.reason||'—'}</td>
+    <td>${statusPillReq(r.status)}${r.note?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${r.note}</div>`:''}</td>
+    <td style="white-space:nowrap;">
+      ${r.status==='รออนุมัติ' ? `<button class="btn btn-sm btn-p" onclick="openReqAction('${r.id}')">ดำเนินการ</button>` : ''}
+      <button class="btn btn-sm" onclick="downloadReqPDF('${r.id}')" style="margin-left:4px;">🖨️</button>
+      <button class="btn btn-sm btn-d" onclick="delReq('${r.id}')" style="margin-left:4px;">ลบ</button>
+    </td></tr>`).join('')
+  : '<tr class="er"><td colspan="9">ยังไม่มีใบเบิก</td></tr>';
+
+  updateReqBadge();
+}
+
+function openReqAction(id) {
+  const r = requisitions.find(x => x.id === id); if (!r) return;
+  document.getElementById('req-action-id').value = id;
+  document.getElementById('req-action-title').textContent = 'ดำเนินการใบเบิก';
+  document.getElementById('req-action-detail').innerHTML =
+    `<strong>${r.teacher}</strong> ขอเบิก <strong>${r.med_name} ${r.qty} ${r.unit}</strong><br>` +
+    `แผนก: ${r.dept||'—'} · เหตุผล: ${r.reason||'—'}`;
+  document.getElementById('req-action-note').value = '';
+  openModal('req-action');
+}
+
+function processReq(action) {
+  const id = document.getElementById('req-action-id').value;
+  const note = document.getElementById('req-action-note').value.trim();
+  const idx = requisitions.findIndex(r => r.id === id); if (idx < 0) return;
+  requisitions[idx].status = action;
+  requisitions[idx].note = note;
+  requisitions[idx].processed_at = nowBKK();
+  saveReqs();
+  closeModal('req-action');
+  renderReq();
+  toast(`${action}เรียบร้อย`);
+}
+
+function saveReq() {
+  const teacher = document.getElementById('rq-teacher').value.trim();
+  const medId = document.getElementById('rq-med').value;
+  const qty = parseInt(document.getElementById('rq-qty').value) || 1;
+  if (!teacher) { toast('กรุณากรอกชื่อครู'); return; }
+  if (!medId) { toast('กรุณาเลือกยา'); return; }
+  const med = medicines.find(m => m.id === medId);
+  if (!med) return;
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  requisitions.unshift({
+    id, teacher,
+    dept: document.getElementById('rq-dept').value.trim(),
+    med_id: medId, med_name: med.name, unit: med.unit, qty,
+    reason: document.getElementById('rq-reason').value.trim(),
+    status: 'รออนุมัติ', note: '',
+    created_at: nowBKK(), processed_at: ''
+  });
+  saveReqs();
+  closeModal('req-form');
+  ['rq-teacher','rq-dept','rq-reason'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('rq-qty').value = '1';
+  renderReq();
+  toast('ส่งใบเบิกแล้ว');
+}
+
+function delReq(id) {
+  showConfirm('ลบใบเบิกนี้?', '', () => {
+    requisitions = requisitions.filter(r => r.id !== id);
+    saveReqs(); renderReq(); toast('ลบแล้ว');
+  });
+}
+
+async function exportReqExcel() {
+  if (!window.XLSX) {
+    await new Promise((res,rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = res; s.onerror = rej; document.head.appendChild(s);
+    });
+  }
+  const fs = document.getElementById('req-filter-status')?.value || '';
+  const fd = document.getElementById('req-filter-date')?.value || '';
+  let data = [...requisitions].sort((a,b) => b.created_at.localeCompare(a.created_at));
+  if (fs) data = data.filter(r => r.status === fs);
+  if (fd) data = data.filter(r => r.created_at.startsWith(fd));
+  if (!data.length) { toast('ไม่มีข้อมูล'); return; }
+
+  const rows = data.map((r,i) => ({
+    'ลำดับ': i+1,
+    'วันที่ขอเบิก': fmtDT(r.created_at),
+    'ครูผู้เบิก': r.teacher,
+    'แผนก/ห้อง': r.dept||'',
+    'ยาที่ขอเบิก': r.med_name,
+    'จำนวน': r.qty,
+    'หน่วย': r.unit,
+    'เหตุผล': r.reason||'',
+    'สถานะ': r.status,
+    'หมายเหตุ': r.note||'',
+    'วันที่ดำเนินการ': r.processed_at ? fmtDT(r.processed_at) : ''
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:6},{wch:18},{wch:20},{wch:14},{wch:20},{wch:8},{wch:8},{wch:22},{wch:12},{wch:16},{wch:18}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ใบเบิกยาครู');
+  const org = document.getElementById('org-tag')?.textContent || 'MedStock';
+  XLSX.writeFile(wb, `${org}_ใบเบิกยา_${today()}.xlsx`);
+  toast(`ส่งออก Excel (${data.length} รายการ)`);
+}
+
+function downloadReqPDF(id) {
+  const r = requisitions.find(x => x.id === id); if (!r) return;
+  const org = document.getElementById('org-tag')?.textContent || 'สถานศึกษา';
+  const statusColor = r.status==='อนุมัติแล้ว'?'#0F6E56':r.status==='ไม่อนุมัติ'?'#A32D2D':'#BA7517';
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>ใบเบิกยา</title>
+  <style>
+    body{font-family:'Sarabun',sans-serif;padding:40px;max-width:600px;margin:0 auto;color:#1a1a18;}
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&display=swap');
+    .header{text-align:center;border-bottom:2px solid #1D9E75;padding-bottom:16px;margin-bottom:24px;}
+    .title{font-size:22px;font-weight:600;color:#1D9E75;}
+    .sub{font-size:14px;color:#666;margin-top:4px;}
+    .row{display:flex;padding:10px 0;border-bottom:1px solid #eee;font-size:14px;}
+    .lbl{width:160px;color:#666;font-weight:500;flex-shrink:0;}
+    .val{flex:1;font-weight:500;}
+    .status{display:inline-block;padding:4px 14px;border-radius:20px;font-weight:600;font-size:14px;color:${statusColor};border:2px solid ${statusColor};}
+    .footer{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;text-align:center;}
+    .sign-box{border-top:1px solid #aaa;padding-top:8px;font-size:13px;color:#666;}
+    @media print{button{display:none;}}
+  </style></head><body>
+  <div class="header">
+    <div class="title">ใบขอเบิกยาและเวชภัณฑ์</div>
+    <div class="sub">${org} · งานสวัสดิการนักเรียน</div>
+  </div>
+  <div class="row"><div class="lbl">วันที่ขอเบิก</div><div class="val">${fmtDT(r.created_at)}</div></div>
+  <div class="row"><div class="lbl">ครูผู้ขอเบิก</div><div class="val">${r.teacher}</div></div>
+  <div class="row"><div class="lbl">แผนก/ห้อง</div><div class="val">${r.dept||'—'}</div></div>
+  <div class="row"><div class="lbl">ยาที่ขอเบิก</div><div class="val">${r.med_name}</div></div>
+  <div class="row"><div class="lbl">จำนวน</div><div class="val">${r.qty} ${r.unit}</div></div>
+  <div class="row"><div class="lbl">เหตุผล/วัตถุประสงค์</div><div class="val">${r.reason||'—'}</div></div>
+  <div class="row"><div class="lbl">สถานะ</div><div class="val"><span class="status">${r.status}</span></div></div>
+  ${r.note?`<div class="row"><div class="lbl">หมายเหตุ</div><div class="val">${r.note}</div></div>`:''}
+  ${r.processed_at?`<div class="row"><div class="lbl">วันที่ดำเนินการ</div><div class="val">${fmtDT(r.processed_at)}</div></div>`:''}
+  <div class="footer">
+    <div><div style="height:50px;"></div><div class="sign-box">ลายมือชื่อครูผู้เบิก<br>(${r.teacher})</div></div>
+    <div><div style="height:50px;"></div><div class="sign-box">ลายมือชื่อผู้อนุมัติ<br>(เจ้าหน้าที่สวัสดิการ)</div></div>
+  </div>
+  <div style="text-align:center;margin-top:24px;">
+    <button onclick="window.print()" style="padding:10px 28px;background:#1D9E75;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;font-family:inherit;">🖨️ พิมพ์ใบเบิก</button>
+  </div>
+  </body></html>`);
+}
+
+function nowBKK() {
+  return new Date().toLocaleString('sv-SE', {timeZone:'Asia/Bangkok'}).replace('T',' ');
+}
+
 </script>
 </body>
 </html>
