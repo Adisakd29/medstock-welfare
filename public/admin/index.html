@@ -1004,21 +1004,17 @@ function openReqAction(id) {
   openModal('req-action');
 }
 
-function processReq(action) {
+async function processReq(action) {
   const id = document.getElementById('req-action-id').value;
   const note = document.getElementById('req-action-note').value.trim();
-  const idx = requisitions.findIndex(r => r.id === id); if (idx < 0) return;
-  requisitions[idx].status = action;
-  requisitions[idx].note = note;
-  requisitions[idx].processed_at = nowBKK();
-  await api('/api/requisitions/'+id,'PUT',{status:action,note});
+  await api('/api/requisitions/'+id, 'PUT', {status:action, note});
   await loadRequisitions();
   closeModal('req-action');
   renderReq();
   toast(`${action}เรียบร้อย`);
 }
 
-function saveReq() {
+async function saveReq() {
   const teacher = document.getElementById('rq-teacher').value.trim();
   const medId = document.getElementById('rq-med').value;
   const qty = parseInt(document.getElementById('rq-qty').value) || 1;
