@@ -1,1 +1,170 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ขอเบิกยา — ครูและบุคลากร</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--blue:#185FA5;--blue-dark:#0D4070;--blue-light:#E6F1FB;--blue-text:#185FA5;--green:#1D9E75;--red:#A32D2D;--red-light:#FCEBEB;--amber:#BA7517;--amber-light:#FAEEDA;--border:#E0DED8;--text:#1a1a18;--text2:#666660;--bg:#F0F4F8;}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+.header{background:var(--blue);padding:20px 20px 28px;text-align:center;}
+.header-icon{width:52px;height:52px;background:rgba(255,255,255,0.2);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+.header-icon svg{width:28px;height:28px;stroke:#fff;fill:none;stroke-width:2;}
+.header h1{color:#fff;font-size:20px;font-weight:600;}
+.header p{color:rgba(255,255,255,0.8);font-size:13px;margin-top:4px;}
+.org-name{font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px;}
+.container{padding:16px;max-width:480px;margin:0 auto;}
+.card{background:#fff;border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+.section-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px;}
+.form-group{margin-bottom:13px;}
+.form-group label{display:block;font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px;}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-family:'Sarabun',sans-serif;font-size:15px;color:var(--text);background:#fff;-webkit-appearance:none;appearance:none;outline:none;transition:border 0.15s;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--blue);}
+.form-group select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px;}
+.form-group textarea{height:80px;resize:none;line-height:1.5;}
+.required{color:var(--red);}
+.qty-row{display:flex;align-items:center;gap:10px;}
+.qty-btn{width:40px;height:40px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:20px;color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.qty-btn:active{background:var(--bg);}
+.qty-input{text-align:center;font-size:18px;font-weight:600;width:60px;flex-shrink:0;border:1.5px solid var(--border);border-radius:8px;padding:8px;}
+.qty-unit{font-size:13px;color:var(--text2);}
+.med-info{background:var(--blue-light);border-radius:10px;padding:10px 13px;margin-top:8px;font-size:13px;color:var(--blue-text);display:none;}
+.med-info.show{display:block;}
+.btn-submit{width:100%;padding:15px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-family:'Sarabun',sans-serif;font-size:17px;font-weight:600;cursor:pointer;margin-top:4px;}
+.btn-submit:disabled{background:#aaa;cursor:not-allowed;}
+.error-msg{background:var(--red-light);color:var(--red);border-radius:8px;padding:10px 13px;font-size:13px;margin-bottom:12px;display:none;}
+.error-msg.show{display:block;}
+.notice{background:var(--amber-light);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--amber);margin-bottom:14px;}
+.success-screen{text-align:center;padding:32px 20px;}
+.success-icon{width:72px;height:72px;background:var(--blue-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+.success-icon svg{width:36px;height:36px;stroke:var(--blue);fill:none;stroke-width:2.5;}
+.success-title{font-size:22px;font-weight:600;margin-bottom:8px;}
+.success-sub{font-size:15px;color:var(--text2);line-height:1.6;}
+.success-detail{background:var(--blue-light);border-radius:12px;padding:14px;margin:16px 0;text-align:left;font-size:14px;color:var(--blue-text);line-height:2;}
+.btn-again{margin-top:8px;padding:13px 24px;background:#fff;border:1.5px solid var(--border);border-radius:10px;font-family:'Sarabun',sans-serif;font-size:15px;font-weight:500;color:var(--text);cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-icon"><svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <h1>ใบขอเบิกยา</h1>
+  <p>สำหรับครูและบุคลากร</p>
+  <div class="org-name" id="org-display"></div>
+</div>
 
+<div class="container" id="form-view">
+  <div class="error-msg" id="error-msg"></div>
+  <div class="notice">⏳ ใบเบิกจะส่งถึงเจ้าหน้าที่สวัสดิการทันที รอการอนุมัติในระยะเวลาอันสั้น</div>
+
+  <div class="card">
+    <div class="section-title">ข้อมูลผู้เบิก</div>
+    <div class="form-group">
+      <label>ชื่อ-นามสกุล <span class="required">*</span></label>
+      <input type="text" id="teacher_name" placeholder="กรอกชื่อ-นามสกุลครู/บุคลากร" autocomplete="name">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>แผนกวิชา / ตำแหน่ง</label>
+      <input type="text" id="dept" placeholder="เช่น แผนกไฟฟ้ากำลัง, ครูที่ปรึกษา ม.3/2">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">รายการยาที่ขอเบิก</div>
+    <div class="form-group">
+      <label>เลือกยา <span class="required">*</span></label>
+      <select id="med_id" onchange="onMedChange()"><option value="">— กำลังโหลด... —</option></select>
+      <div class="med-info" id="med-info"></div>
+    </div>
+    <div class="form-group">
+      <label>จำนวนที่ขอเบิก</label>
+      <div class="qty-row">
+        <button class="qty-btn" onclick="changeQty(-1)" type="button">−</button>
+        <input type="number" class="qty-input" id="qty" value="1" min="1" max="999">
+        <button class="qty-btn" onclick="changeQty(1)" type="button">+</button>
+        <span class="qty-unit" id="qty-unit"></span>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>เหตุผล / วัตถุประสงค์ <span class="required">*</span></label>
+      <textarea id="reason" placeholder="เช่น สำรองไว้ประจำห้องเรียน, ใช้ในกิจกรรม..."></textarea>
+    </div>
+  </div>
+
+  <button class="btn-submit" id="submit-btn" onclick="submitForm()">📋 ส่งใบขอเบิกยา</button>
+  <div style="text-align:center;font-size:12px;color:var(--text2);margin-top:12px;padding-bottom:24px;">ข้อมูลจะส่งถึงเจ้าหน้าที่สวัสดิการโดยตรง</div>
+</div>
+
+<div class="container" id="success-view" style="display:none;">
+  <div class="success-screen">
+    <div class="success-icon"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="success-title">ส่งใบเบิกสำเร็จ!</div>
+    <div class="success-sub">เจ้าหน้าที่จะพิจารณาใบเบิก<br>และดำเนินการโดยเร็ว</div>
+    <div class="success-detail" id="success-detail"></div>
+    <button class="btn-again" onclick="resetForm()">ส่งใบเบิกใหม่</button>
+  </div>
+</div>
+
+<script>
+let medicines=[];
+async function loadMedicines(){
+  try{
+    const res=await fetch('/api/medicines');
+    medicines=await res.json();
+    const sel=document.getElementById('med_id');
+    sel.innerHTML=medicines.length
+      ?'<option value="">— เลือกยาที่ต้องการเบิก —</option>'+medicines.map(m=>`<option value="${m.id}">${m.name}${m.generic?' ('+m.generic+')':''} — คงเหลือ ${m.qty} ${m.unit}</option>`).join('')
+      :'<option value="">— ไม่มียาในคลัง —</option>';
+  }catch(e){document.getElementById('med_id').innerHTML='<option value="">— ไม่สามารถโหลดได้ —</option>';}
+}
+async function loadOrg(){
+  try{const res=await fetch('/api/settings-public');if(res.ok){const d=await res.json();if(d.org_name)document.getElementById('org-display').textContent=d.org_name;}}catch(e){}
+}
+function onMedChange(){
+  const med=medicines.find(m=>m.id===document.getElementById('med_id').value);
+  const info=document.getElementById('med-info');const unit=document.getElementById('qty-unit');
+  if(med){info.textContent=`คงเหลือ ${med.qty} ${med.unit} · หมวด: ${med.category}`;info.classList.add('show');unit.textContent=med.unit;}
+  else{info.classList.remove('show');unit.textContent='';}
+}
+function changeQty(d){const inp=document.getElementById('qty');inp.value=Math.max(1,(parseInt(inp.value)||1)+d);}
+function showError(msg){const el=document.getElementById('error-msg');el.textContent=msg;el.classList.add('show');el.scrollIntoView({behavior:'smooth',block:'center'});}
+function hideError(){document.getElementById('error-msg').classList.remove('show');}
+async function submitForm(){
+  hideError();
+  const teacher=document.getElementById('teacher_name').value.trim();
+  const dept=document.getElementById('dept').value.trim();
+  const medId=document.getElementById('med_id').value;
+  const qty=parseInt(document.getElementById('qty').value)||1;
+  const reason=document.getElementById('reason').value.trim();
+  if(!teacher){showError('กรุณากรอกชื่อ-นามสกุล');document.getElementById('teacher_name').focus();return;}
+  if(!medId){showError('กรุณาเลือกยาที่ต้องการเบิก');return;}
+  if(!reason){showError('กรุณากรอกเหตุผล/วัตถุประสงค์');document.getElementById('reason').focus();return;}
+  const btn=document.getElementById('submit-btn');btn.disabled=true;btn.textContent='กำลังส่ง...';
+  try{
+    const res=await fetch('/api/requisitions',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({teacher,dept,med_id:medId,qty,reason,source:'qr'})});
+    const data=await res.json();
+    if(!res.ok){showError(data.error||'เกิดข้อผิดพลาด');btn.disabled=false;btn.textContent='📋 ส่งใบขอเบิกยา';return;}
+    document.getElementById('success-detail').innerHTML=
+      `<div>👩‍🏫 ${teacher}${dept?' · '+dept:''}</div>`+
+      `<div>💊 ${data.med_name} ${qty} ${data.unit}</div>`+
+      `<div>📋 ${reason}</div>`+
+      `<div>🔖 เลขใบเบิก: <strong>#${data.id.slice(-6).toUpperCase()}</strong></div>`;
+    document.getElementById('form-view').style.display='none';
+    document.getElementById('success-view').style.display='block';
+    window.scrollTo(0,0);
+  }catch(e){showError('ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่');btn.disabled=false;btn.textContent='📋 ส่งใบขอเบิกยา';}
+}
+function resetForm(){
+  ['teacher_name','dept','reason'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('med_id').value='';document.getElementById('qty').value='1';
+  document.getElementById('med-info').classList.remove('show');document.getElementById('qty-unit').textContent='';
+  document.getElementById('submit-btn').disabled=false;document.getElementById('submit-btn').textContent='📋 ส่งใบขอเบิกยา';
+  document.getElementById('form-view').style.display='block';document.getElementById('success-view').style.display='none';
+  hideError();loadMedicines();window.scrollTo(0,0);
+}
+loadMedicines();loadOrg();
+</script>
+</body>
+</html>
