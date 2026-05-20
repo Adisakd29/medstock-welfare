@@ -7,7 +7,7 @@ const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'welfare2567';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'pawarisa2569';
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
 // DB อยู่ใน Volume ที่ /app/db
