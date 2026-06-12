@@ -436,6 +436,39 @@ tr:hover td{background:#fafaf8;}
     </div>
   </div>
 </div>
+
+<!-- MODAL: EDIT DISPENSE -->
+<div class="ov" id="ov-edit-disp" onclick="if(event.target===this)closeModal('edit-disp')">
+  <div class="modal">
+    <div class="mt">แก้ไขข้อมูลการจ่ายยา</div>
+    <input type="hidden" id="ed-id">
+    <div class="fr">
+      <div class="fg"><label>ชื่อ-นามสกุล <span class="req">*</span></label><input type="text" id="ed-name" placeholder="ชื่อ-นามสกุล"></div>
+      <div class="fg"><label>แผนกวิชา</label><input type="text" id="ed-dept" placeholder="แผนกวิชา"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>ระดับชั้น</label><input type="text" id="ed-class" placeholder="เช่น ปวช.3/1"></div>
+      <div class="fg"><label>จำนวน</label><input type="number" id="ed-qty" min="1" value="1"></div>
+    </div>
+    <div class="fg ff" style="margin-top:4px;"><label>อาการ</label><textarea id="ed-symptom" style="height:60px;width:100%;"></textarea></div>
+    <div class="fg ff" style="margin-top:8px;"><label>ประวัติแพ้ยา</label>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          <input type="radio" name="ed-allergy" value="ไม่แพ้ยา" style="accent-color:var(--green);"> ไม่แพ้ยา
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;">
+          <input type="radio" name="ed-allergy" value="แพ้ยา" style="accent-color:var(--red);"> แพ้ยา
+        </label>
+      </div>
+      <input type="text" id="ed-allergy-detail" placeholder="ระบุชื่อยาที่แพ้..." style="margin-top:6px;width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;display:none;">
+    </div>
+    <div class="fg ff" style="margin-top:8px;"><label>หมายเหตุ</label><textarea id="ed-note" style="height:50px;width:100%;"></textarea></div>
+    <div class="ma">
+      <button class="btn" onclick="closeModal('edit-disp')">ยกเลิก</button>
+      <button class="btn btn-p" onclick="saveEditDisp()">บันทึก</button>
+    </div>
+  </div>
+</div>
 <div class="ov" id="ov-confirm" onclick="if(event.target===this)closeModal('confirm')">
   <div class="modal" style="max-width:360px;">
     <div class="mt">ยืนยันการดำเนินการ</div>
@@ -727,7 +760,7 @@ function renderDisp() {
         <td style="max-width:140px;font-size:12px;">${d.symptom||'—'}</td>
         <td><span class="pill ${d.allergy&&d.allergy!=='ไม่แพ้ยา'?'p-danger':'p-ok'}" style="font-size:11px;">${d.allergy||'ไม่แพ้ยา'}</span></td>
         <td><span class="pill ${d.source==='qr'?'p-qr':'p-ok'}">${d.source==='qr'?'QR':'เจ้าหน้าที่'}</span></td>
-        <td><button class="btn btn-sm btn-d" onclick="delDisp('${d.id}')">ลบ</button></td></tr>`).join('')
+        <td style="white-space:nowrap;"><button class="btn btn-sm" onclick="editDisp('${d.id}')">แก้ไข</button> <button class="btn btn-sm btn-d" onclick="delDisp('${d.id}')">ลบ</button></td></tr>`).join('')
     : '<tr class="er"><td colspan="10">ไม่พบข้อมูล</td></tr>';
 }
 
@@ -863,6 +896,63 @@ async function saveDisp() {
   toast('บันทึกการจ่ายยาแล้ว');
 }
 
+
+// ─── EDIT DISPENSE ────────────────────────────────────────────
+function editDisp(id) {
+  const d = dispenses.find(x => x.id === id); if (!d) return;
+  document.getElementById('ed-id').value = id;
+  document.getElementById('ed-name').value = d.student_name || '';
+  document.getElementById('ed-dept').value = d.student_id || '';
+  document.getElementById('ed-class').value = d.class_room || '';
+  document.getElementById('ed-qty').value = d.qty || 1;
+  document.getElementById('ed-symptom').value = d.symptom || '';
+  document.getElementById('ed-note').value = d.note || '';
+
+  // allergy
+  const allergy = d.allergy || 'ไม่แพ้ยา';
+  const isAllergic = allergy !== 'ไม่แพ้ยา';
+  document.querySelector(`input[name="ed-allergy"][value="${isAllergic ? 'แพ้ยา' : 'ไม่แพ้ยา'}"]`).checked = true;
+  const detail = document.getElementById('ed-allergy-detail');
+  detail.style.display = isAllergic ? 'block' : 'none';
+  detail.value = isAllergic ? allergy.replace('แพ้ยา: ','') : '';
+
+  // toggle allergy detail
+  document.querySelectorAll('input[name="ed-allergy"]').forEach(r => {
+    r.onchange = () => {
+      detail.style.display = r.value === 'แพ้ยา' ? 'block' : 'none';
+      if (r.value !== 'แพ้ยา') detail.value = '';
+    };
+  });
+
+  openModal('edit-disp');
+}
+
+async function saveEditDisp() {
+  const id = document.getElementById('ed-id').value;
+  const name = document.getElementById('ed-name').value.trim();
+  if (!name) { toast('กรุณากรอกชื่อ'); return; }
+
+  const allergyType = document.querySelector('input[name="ed-allergy"]:checked')?.value || 'ไม่แพ้ยา';
+  const allergyDetail = document.getElementById('ed-allergy-detail').value.trim();
+  const allergy = allergyType === 'แพ้ยา' ? `แพ้ยา: ${allergyDetail}` : 'ไม่แพ้ยา';
+
+  const body = {
+    student_name: name,
+    student_id: document.getElementById('ed-dept').value.trim(),
+    class_room: document.getElementById('ed-class').value.trim(),
+    qty: parseInt(document.getElementById('ed-qty').value) || 1,
+    symptom: document.getElementById('ed-symptom').value.trim(),
+    allergy,
+    note: document.getElementById('ed-note').value.trim(),
+  };
+
+  const res = await api('/api/dispenses/' + id, 'PUT', body);
+  if (res.error) { toast(res.error); return; }
+  await loadDispenses();
+  renderDisp();
+  closeModal('edit-disp');
+  toast('แก้ไขข้อมูลแล้ว ✅');
+}
 function delDisp(id) {
   showConfirm('ลบบันทึกการจ่ายยานี้?', 'จะไม่คืนสต็อกอัตโนมัติ', async () => {
     await api('/api/dispenses/' + id, 'DELETE');
