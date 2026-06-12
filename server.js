@@ -48,6 +48,17 @@ async function initDB() {
     await run("INSERT OR IGNORE INTO settings VALUES ('org_name','สถานศึกษา')");
     await run("INSERT OR IGNORE INTO settings VALUES ('admin_name','ผู้ดูแลระบบ')");
   }
+
+  // เพิ่ม column ที่อาจไม่มีใน database เก่า (ไม่ error ถ้ามีอยู่แล้ว)
+  const alterCmds = [
+    "ALTER TABLE dispenses ADD COLUMN note TEXT DEFAULT ''",
+    "ALTER TABLE dispenses ADD COLUMN allergy TEXT DEFAULT 'ไม่แพ้ยา'",
+    "ALTER TABLE requisitions ADD COLUMN note TEXT DEFAULT ''",
+    "ALTER TABLE requisitions ADD COLUMN processed_at TEXT DEFAULT ''",
+  ];
+  for (const cmd of alterCmds) {
+    await run(cmd).catch(() => {}); // ignore error if column already exists
+  }
   console.log('✅ SQLite ready at', dbPath);
 }
 
