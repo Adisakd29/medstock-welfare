@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ขอรับยา — สวัสดิการนักเรียน</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--green:#1D9E75;--green-dark:#0F6E56;--green-light:#E1F5EE;--red:#A32D2D;--red-light:#FCEBEB;--border:#E0DED8;--text:#1a1a18;--text2:#666660;--bg:#F5F4F0;}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+.header{background:var(--green);padding:20px 20px 24px;text-align:center;}
+.header-icon{width:52px;height:52px;background:rgba(255,255,255,0.2);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+.header-icon svg{width:28px;height:28px;stroke:#fff;fill:none;stroke-width:2;}
+.header h1{color:#fff;font-size:20px;font-weight:600;}
+.header p{color:rgba(255,255,255,0.8);font-size:13px;margin-top:4px;}
+.org-name{font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px;}
+.container{padding:16px;max-width:480px;margin:0 auto;}
+.card{background:#fff;border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+.section-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px;}
+.form-group{margin-bottom:13px;}
+.form-group label{display:block;font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px;}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-family:'Sarabun',sans-serif;font-size:15px;color:var(--text);background:#fff;-webkit-appearance:none;appearance:none;outline:none;transition:border 0.15s;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--green);}
+.form-group select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px;}
+.form-group textarea{height:76px;resize:none;line-height:1.5;}
+.required{color:var(--red);}
+.med-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.med-list-item{display:flex;align-items:center;gap:10px;background:var(--green-light);border-radius:10px;padding:10px 12px;}
+.med-list-name{flex:1;font-size:14px;font-weight:500;color:var(--green-dark);}
+.med-list-qty{display:flex;align-items:center;gap:6px;}
+.med-list-qty button{width:28px;height:28px;border:1px solid var(--green-dark);border-radius:6px;background:#fff;color:var(--green-dark);font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.med-list-qty span{min-width:24px;text-align:center;font-weight:600;font-size:14px;}
+.med-list-remove{width:28px;height:28px;border-radius:6px;background:var(--red-light);color:var(--red);display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-size:16px;flex-shrink:0;}
+.btn-add-med{width:100%;padding:11px;background:#fff;border:1.5px dashed var(--green);color:var(--green-dark);border-radius:10px;font-family:'Sarabun',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;}
+.btn-add-med:hover{background:var(--green-light);}
+.empty-med-list{text-align:center;color:var(--text2);font-size:13px;padding:12px;background:var(--bg);border-radius:10px;margin-top:8px;}
+.radio-group{display:flex;gap:8px;flex-wrap:wrap;}
+.radio-opt{flex:1;min-width:90px;}
+.radio-opt input[type=radio]{display:none;}
+.radio-opt label{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 6px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;transition:all 0.15s;color:var(--text2);text-align:center;}
+.radio-opt input[type=radio]:checked + label{border-color:var(--green);background:var(--green-light);color:var(--green-dark);}
+.radio-opt.danger input[type=radio]:checked + label{border-color:var(--red);background:var(--red-light);color:var(--red);}
+.radio-dot{width:8px;height:8px;border-radius:50%;border:2px solid currentColor;display:inline-block;flex-shrink:0;}
+.radio-opt input[type=radio]:checked + label .radio-dot{background:currentColor;}
+.allergy-box{background:var(--red-light);border-radius:10px;padding:12px;margin-top:10px;display:none;}
+.allergy-box.show{display:block;}
+.allergy-box label{color:var(--red);font-size:14px;font-weight:500;margin-bottom:6px;display:block;}
+.allergy-box input{width:100%;padding:10px 12px;border:1.5px solid #f09595;border-radius:8px;font-family:'Sarabun',sans-serif;font-size:14px;background:#fff;outline:none;}
+.allergy-box input:focus{border-color:var(--red);}
+.symptom-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.sym-opt{display:flex;align-items:center;cursor:pointer;}
+.sym-opt input[type=checkbox]{display:none;}
+.sym-opt span{display:flex;align-items:center;gap:7px;width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-weight:500;color:var(--text2);transition:all 0.15s;}
+.sym-opt input[type=checkbox]:checked + span{border-color:var(--green);background:var(--green-light);color:var(--green-dark);}
+.sym-opt span::before{content:'';width:16px;height:16px;border-radius:4px;border:2px solid currentColor;display:inline-block;flex-shrink:0;transition:all 0.15s;}
+.sym-opt input[type=checkbox]:checked + span::before{background:var(--green);border-color:var(--green);content:'✓';color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;}
+.qty-btn{width:40px;height:40px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:20px;color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.qty-btn:active{background:var(--bg);}
+.qty-input{text-align:center;font-size:18px;font-weight:600;width:60px;flex-shrink:0;border:1.5px solid var(--border);border-radius:8px;padding:8px;}
+.qty-unit{font-size:13px;color:var(--text2);}
+.med-info{background:var(--green-light);border-radius:10px;padding:10px 13px;margin-top:8px;font-size:13px;color:var(--green-dark);display:none;}
+.med-info.show{display:block;}
+.btn-submit{width:100%;padding:15px;background:var(--green);color:#fff;border:none;border-radius:12px;font-family:'Sarabun',sans-serif;font-size:17px;font-weight:600;cursor:pointer;transition:background 0.15s;margin-top:4px;}
+.btn-submit:hover{background:var(--green-dark);}
+.btn-submit:disabled{background:#aaa;cursor:not-allowed;}
+.error-msg{background:var(--red-light);color:var(--red);border-radius:8px;padding:10px 13px;font-size:13px;margin-bottom:12px;display:none;}
+.error-msg.show{display:block;}
+.success-screen{text-align:center;padding:32px 20px;}
+.success-icon{width:72px;height:72px;background:var(--green-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+.success-icon svg{width:36px;height:36px;stroke:var(--green);fill:none;stroke-width:2.5;}
+.success-title{font-size:22px;font-weight:600;margin-bottom:8px;}
+.success-sub{font-size:15px;color:var(--text2);line-height:1.6;}
+.success-detail{background:var(--green-light);border-radius:12px;padding:14px;margin:16px 0;text-align:left;font-size:14px;color:var(--green-dark);line-height:2;}
+.btn-again{margin-top:8px;padding:13px 24px;background:#fff;border:1.5px solid var(--border);border-radius:10px;font-family:'Sarabun',sans-serif;font-size:15px;font-weight:500;color:var(--text);cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-icon"><svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20" stroke-linecap="round"/></svg></div>
+  <h1>ขอรับยา</h1>
+  <p>งานสวัสดิการนักเรียน</p>
+  <div class="org-name" id="org-display"></div>
+</div>
+
+<div class="container" id="form-view">
+  <div class="error-msg" id="error-msg"></div>
+
+  <div class="card">
+    <div class="section-title">ข้อมูลนักเรียน</div>
+    <div class="form-group">
+      <label>คำนำหน้า <span class="required">*</span></label>
+      <div class="radio-group">
+        <div class="radio-opt"><input type="radio" name="prefix" id="p1" value="นาย"><label for="p1"><span class="radio-dot"></span>นาย</label></div>
+        <div class="radio-opt"><input type="radio" name="prefix" id="p2" value="นางสาว"><label for="p2"><span class="radio-dot"></span>นางสาว</label></div>
+        <div class="radio-opt"><input type="radio" name="prefix" id="p3" value="เด็กชาย"><label for="p3"><span class="radio-dot"></span>เด็กชาย</label></div>
+        <div class="radio-opt"><input type="radio" name="prefix" id="p4" value="เด็กหญิง"><label for="p4"><span class="radio-dot"></span>เด็กหญิง</label></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>ชื่อ-นามสกุล <span class="required">*</span></label>
+      <input type="text" id="student_name" placeholder="กรอกชื่อ-นามสกุล" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label>แผนกวิชา <span class="required">*</span></label>
+      <input type="text" id="department" placeholder="เช่น ไฟฟ้ากำลัง, การบัญชี, คอมพิวเตอร์">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>ระดับชั้น <span class="required">*</span></label>
+      <input type="text" id="class_room" placeholder="เช่น ปวช.3/1, ปวส.2/2, ม.3/2">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">รายการยาที่ต้องการ</div>
+    <div class="form-group">
+      <label>ลักษณะอาการ (เลือกได้หลายข้อ)</label>
+      <div class="symptom-grid">
+        <label class="sym-opt"><input type="checkbox" value="ปวดศีรษะ"><span>🤕 ปวดศีรษะ</span></label>
+        <label class="sym-opt"><input type="checkbox" value="มีไข้"><span>🌡️ มีไข้</span></label>
+        <label class="sym-opt"><input type="checkbox" value="เจ็บคอ"><span>😮 เจ็บคอ</span></label>
+        <label class="sym-opt"><input type="checkbox" value="ไอ"><span>😷 ไอ</span></label>
+        <label class="sym-opt"><input type="checkbox" value="น้ำมูกไหล"><span>🤧 น้ำมูกไหล</span></label>
+        <label class="sym-opt"><input type="checkbox" value="ปวดท้อง"><span>🤢 ปวดท้อง</span></label>
+        <label class="sym-opt"><input type="checkbox" value="ท้องเสีย"><span>🚽 ท้องเสีย</span></label>
+        <label class="sym-opt"><input type="checkbox" value="คลื่นไส้/อาเจียน"><span>🤮 คลื่นไส้</span></label>
+        <label class="sym-opt"><input type="checkbox" value="ปวดกล้ามเนื้อ"><span>💪 ปวดกล้ามเนื้อ</span></label>
+        <label class="sym-opt"><input type="checkbox" value="ผื่นคัน"><span>🔴 ผื่นคัน</span></label>
+        <label class="sym-opt"><input type="checkbox" value="เวียนหัว"><span>😵 เวียนหัว</span></label>
+        <label class="sym-opt"><input type="checkbox" value="บาดแผล/ถลอก"><span>🩹 บาดแผล/ถลอก</span></label>
+      </div>
+      <input type="text" id="symptom-other" placeholder="อื่นๆ โปรดระบุ..." style="margin-top:8px;">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>เลือกยา (เลือกได้มากกว่า 1 รายการ) <span class="required">*</span></label>
+      <select id="med_id" onchange="onMedChange()"><option value="">— กำลังโหลด... —</option></select>
+      <div class="med-info" id="med-info"></div>
+      <button type="button" class="btn-add-med" onclick="addMedToList()">+ เพิ่มรายการยา</button>
+      <div class="med-list" id="med-list"></div>
+      <div class="empty-med-list" id="empty-med-msg">ยังไม่ได้เลือกยา — กรุณาเลือกยาแล้วกด "เพิ่มรายการยา"</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">ประวัติการแพ้ยา</div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>ประวัติแพ้ยา <span class="required">*</span></label>
+      <div class="radio-group">
+        <div class="radio-opt"><input type="radio" name="allergy" id="a1" value="ไม่แพ้ยา" onchange="onAllergyChange()"><label for="a1"><span class="radio-dot"></span>ไม่แพ้ยา</label></div>
+        <div class="radio-opt danger"><input type="radio" name="allergy" id="a2" value="แพ้ยา" onchange="onAllergyChange()"><label for="a2"><span class="radio-dot"></span>แพ้ยา</label></div>
+      </div>
+      <div class="allergy-box" id="allergy-box">
+        <label>โปรดระบุชื่อยาที่แพ้ <span class="required">*</span></label>
+        <input type="text" id="allergy_med" placeholder="เช่น แอสไพริน, เพนิซิลิน...">
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-submit" id="submit-btn" onclick="submitForm()">ส่งคำขอรับยา</button>
+  <div style="text-align:center;font-size:12px;color:var(--text2);margin-top:12px;padding-bottom:24px;">ข้อมูลจะถูกส่งถึงเจ้าหน้าที่สวัสดิการโดยตรง</div>
+</div>
+
+<div class="container" id="success-view" style="display:none;">
+  <div class="success-screen">
+    <div class="success-icon"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="success-title">ส่งคำขอสำเร็จ!</div>
+    <div class="success-sub">กรุณาไปรับยาที่ห้องพยาบาล<br>เจ้าหน้าที่จะจ่ายยาให้คุณ</div>
+    <div class="success-detail" id="success-detail"></div>
+    <button class="btn-again" onclick="resetForm()">ขอรับยาอีกครั้ง</button>
+  </div>
+</div>
+
+<script>
+let medicines=[];
+async function loadMedicines(){
+  try{
+    const res=await fetch('/api/medicines');
+    medicines=await res.json();
+    const av=medicines.filter(m=>m.qty>0);
+    const sel=document.getElementById('med_id');
+    sel.innerHTML=av.length?'<option value="">— เลือกยาที่ต้องการ —</option>'+av.map(m=>`<option value="${m.id}">${m.name}${m.generic?' ('+m.generic+')':''}</option>`).join(''):'<option value="">— ไม่มียาในคลัง —</option>';
+  }catch(e){document.getElementById('med_id').innerHTML='<option value="">— ไม่สามารถโหลดได้ —</option>';}
+}
+async function loadOrg(){
+  try{const res=await fetch('/api/settings-public');if(res.ok){const d=await res.json();if(d.org_name)document.getElementById('org-display').textContent=d.org_name;}}catch(e){}
+}
+let selectedMeds=[];
+function onMedChange(){
+  const med=medicines.find(m=>m.id===document.getElementById('med_id').value);
+  const info=document.getElementById('med-info');
+  if(med){info.textContent=`คงเหลือ ${med.qty} ${med.unit} · หมวด: ${med.category}`;info.classList.add('show');}
+  else{info.classList.remove('show');}
+}
+function onAllergyChange(){
+  const val=document.querySelector('input[name=allergy]:checked')?.value;
+  const box=document.getElementById('allergy-box');
+  box.classList.toggle('show',val==='แพ้ยา');
+  if(val!=='แพ้ยา')document.getElementById('allergy_med').value='';
+}
+function addMedToList(){
+  const medId=document.getElementById('med_id').value;
+  if(!medId){showError('กรุณาเลือกยาก่อนกดเพิ่มรายการ');return;}
+  const med=medicines.find(m=>m.id===medId);
+  if(!med){return;}
+  if(selectedMeds.find(m=>m.med_id===medId)){showError('เลือกยานี้ไปแล้ว');return;}
+  hideError();
+  selectedMeds.push({med_id:medId,name:med.name,unit:med.unit,max:med.qty,qty:1});
+  document.getElementById('med_id').value='';
+  document.getElementById('med-info').classList.remove('show');
+  renderMedList();
+}
+function removeMedFromList(medId){
+  selectedMeds=selectedMeds.filter(m=>m.med_id!==medId);
+  renderMedList();
+}
+function changeMedQty(medId,delta){
+  const item=selectedMeds.find(m=>m.med_id===medId);
+  if(!item)return;
+  item.qty=Math.max(1,Math.min(item.max||10,item.qty+delta));
+  renderMedList();
+}
+function renderMedList(){
+  const list=document.getElementById('med-list');
+  const emptyMsg=document.getElementById('empty-med-msg');
+  if(!selectedMeds.length){list.innerHTML='';emptyMsg.style.display='block';return;}
+  emptyMsg.style.display='none';
+  list.innerHTML=selectedMeds.map(m=>`
+    <div class="med-list-item">
+      <div class="med-list-name">${m.name}</div>
+      <div class="med-list-qty">
+        <button type="button" onclick="changeMedQty('${m.med_id}',-1)">−</button>
+        <span>${m.qty}</span>
+        <button type="button" onclick="changeMedQty('${m.med_id}',1)">+</button>
+      </div>
+      <div style="font-size:12px;color:var(--green-dark);min-width:30px;">${m.unit}</div>
+      <button type="button" class="med-list-remove" onclick="removeMedFromList('${m.med_id}')">×</button>
+    </div>`).join('');
+}
+function showError(msg){const el=document.getElementById('error-msg');el.textContent=msg;el.classList.add('show');el.scrollIntoView({behavior:'smooth',block:'center'});}
+function hideError(){document.getElementById('error-msg').classList.remove('show');}
+async function submitForm(){
+  hideError();
+  const prefix=document.querySelector('input[name=prefix]:checked')?.value;
+  const name=document.getElementById('student_name').value.trim();
+  const dept=document.getElementById('department').value.trim();
+  const cls=document.getElementById('class_room').value.trim();
+  const checked=[...document.querySelectorAll('.symptom-grid input[type=checkbox]:checked')].map(c=>c.value);
+  const other=document.getElementById('symptom-other').value.trim();
+  if(other) checked.push(other);
+  const symptom=checked.join(', ');
+  const allergy=document.querySelector('input[name=allergy]:checked')?.value;
+  const allergyMed=document.getElementById('allergy_med').value.trim();
+  if(!prefix){showError('กรุณาเลือกคำนำหน้า');return;}
+  if(!name){showError('กรุณากรอกชื่อ-นามสกุล');document.getElementById('student_name').focus();return;}
+  if(!dept){showError('กรุณากรอกแผนกวิชา');document.getElementById('department').focus();return;}
+  if(!cls){showError('กรุณากรอกระดับชั้น');document.getElementById('class_room').focus();return;}
+  if(!selectedMeds.length){showError('กรุณาเลือกยาอย่างน้อย 1 รายการ');return;}
+  if(!allergy){showError('กรุณาระบุประวัติการแพ้ยา');return;}
+  if(allergy==='แพ้ยา'&&!allergyMed){showError('กรุณาระบุชื่อยาที่แพ้');document.getElementById('allergy_med').focus();return;}
+  const btn=document.getElementById('submit-btn');btn.disabled=true;btn.textContent='กำลังส่ง...';
+  const fullName=`${prefix} ${name}`;
+  const allergyNote=allergy==='แพ้ยา'?`แพ้ยา: ${allergyMed}`:'ไม่แพ้ยา';
+  try{
+    const results=[];
+    for(const m of selectedMeds){
+      const res=await fetch('/api/dispenses',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({student_name:fullName,class_room:cls,student_id:dept,med_id:m.med_id,qty:m.qty,symptom,source:'qr',allergy:allergyNote})});
+      const data=await res.json();
+      if(!res.ok){showError(`${m.name}: ${data.error||'เกิดข้อผิดพลาด'}`);btn.disabled=false;btn.textContent='ส่งคำขอรับยา';return;}
+      results.push(data);
+    }
+    document.getElementById('success-detail').innerHTML=
+      `<div>👤 ${fullName} · ${dept} · ${cls}</div>`+
+      (symptom?`<div>🩺 อาการ: ${symptom}</div>`:'')+
+      `<div>💊 ยา: ${results.map(r=>`${r.med_name} ${r.qty} ${r.unit}`).join(', ')}</div>`+
+      `<div>⚠️ แพ้ยา: ${allergyNote}</div>`;
+    document.getElementById('form-view').style.display='none';
+    document.getElementById('success-view').style.display='block';
+    window.scrollTo(0,0);
+  }catch(e){showError('ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่');btn.disabled=false;btn.textContent='ส่งคำขอรับยา';}
+}
+function resetForm(){
+  document.querySelectorAll('input[name=prefix],input[name=allergy]').forEach(r=>r.checked=false);
+  document.querySelectorAll('.symptom-grid input[type=checkbox]').forEach(c=>c.checked=false);
+  ['student_name','department','class_room','allergy_med','symptom-other'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('med_id').value='';
+  document.getElementById('med-info').classList.remove('show');
+  document.getElementById('allergy-box').classList.remove('show');
+  selectedMeds=[];renderMedList();
+  document.getElementById('submit-btn').disabled=false;document.getElementById('submit-btn').textContent='ส่งคำขอรับยา';
+  document.getElementById('form-view').style.display='block';document.getElementById('success-view').style.display='none';
+  hideError();loadMedicines();window.scrollTo(0,0);
+}
+loadMedicines();loadOrg();renderMedList();
+</script>
+</body>
+</html>
