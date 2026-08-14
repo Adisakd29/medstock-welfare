@@ -345,14 +345,22 @@ tr:hover td{background:#fafaf8;}
 
     <div class="card" style="padding-bottom:0;">
       <div class="sr">
-        <select id="sc-level" onchange="onScLevelChange()" style="width:130px;"><option value="">ทุกระดับชั้น</option></select>
-        <select id="sc-room" onchange="loadScreenings()" style="width:220px;"><option value="">ทุกห้อง</option></select>
-        <input type="text" id="sc-search" placeholder="ค้นหาชื่อ / รหัสนักเรียน..." oninput="renderScreen()" style="flex:1;">
+        <select id="sc-level" onchange="onScLevelChange()" style="width:125px;"><option value="">ทุกระดับชั้น</option></select>
+        <select id="sc-dept" onchange="onScDeptChange()" style="width:180px;"><option value="">ทุกแผนกวิชา</option></select>
+        <select id="sc-room" onchange="loadScreenings()" style="width:190px;"><option value="">ทุกห้อง</option></select>
+        <select id="sc-status" onchange="renderScreen()" style="width:130px;">
+          <option value="">ทุกสถานะ</option>
+          <option value="done">กรอกแล้ว</option>
+          <option value="pending">ยังไม่กรอก</option>
+        </select>
+        <input type="text" id="sc-search" placeholder="ค้นหาชื่อ / รหัส..." oninput="renderScreen()" style="flex:1;min-width:140px;">
       </div>
+      <div id="sc-roombar" style="display:none;padding:9px 12px;background:var(--green-light);border-radius:var(--r);margin-bottom:10px;font-size:13px;color:var(--green-text);"></div>
       <div class="tw">
         <table>
           <thead><tr>
-            <th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ระดับชั้น</th><th>ห้อง</th>
+            <th style="width:34px;">#</th><th>สถานะ</th><th>รหัส</th><th>ชื่อ-นามสกุล</th>
+            <th>ระดับชั้น</th><th>ห้อง</th><th>แผนกวิชา</th>
             <th>น้ำหนัก</th><th>ส่วนสูง</th><th>BMI</th><th>หมู่เลือด</th>
             <th>โรคประจำตัว</th><th>แพ้ยา</th><th>แพ้อาหาร</th><th>อาการ</th>
             <th>ผู้ปกครอง</th><th>โทร</th><th></th>
@@ -1287,35 +1295,65 @@ function nowBKK() {
 }
 
 // ─── SCREENING ────────────────────────────────────────────────
-let screenings = [], scRooms = [];
+let screenings = [], scRoster = [];
 
 async function initScreening(){
   try{
     const levels = await (await fetch('/api/students/levels')).json();
-    const sel = document.getElementById('sc-level');
-    sel.innerHTML = '<option value="">ทุกระดับชั้น</option>' + levels.map(l=>`<option value="${l}">${l}</option>`).join('');
+    document.getElementById('sc-level').innerHTML =
+      '<option value="">ทุกระดับชั้น</option>' + levels.map(l=>`<option value="${l}">${l}</option>`).join('');
   }catch(e){}
+  await loadDepts();
   await loadScreenings();
 }
 
-async function onScLevelChange(){
+async function loadDepts(){
   const level = document.getElementById('sc-level').value;
-  const roomSel = document.getElementById('sc-room');
-  if(!level){ roomSel.innerHTML = '<option value="">ทุกห้อง</option>'; await loadScreenings(); return; }
-  const rooms = await (await fetch('/api/students/rooms?level='+encodeURIComponent(level))).json();
-  scRooms = rooms;
-  roomSel.innerHTML = '<option value="">ทุกห้อง</option>' +
-    rooms.map(r=>`<option value="${r.room}">${r.room} — ${r.dept} (${r.cnt})</option>`).join('');
+  let url = '/api/students/depts';
+  if(level) url += '?level='+encodeURIComponent(level);
+  try{
+    const depts = await (await fetch(url)).json();
+    document.getElementById('sc-dept').innerHTML =
+      '<option value="">ทุกแผนกวิชา</option>' +
+      depts.map(d=>`<option value="${d.dept}">${d.dept} (${d.cnt})</option>`).join('');
+  }catch(e){}
+}
+
+async function loadRooms(){
+  const level = document.getElementById('sc-level').value;
+  const dept  = document.getElementById('sc-dept').value;
+  let url = '/api/students/rooms?x=1';
+  if(level) url += '&level='+encodeURIComponent(level);
+  if(dept)  url += '&dept='+encodeURIComponent(dept);
+  try{
+    const rooms = await (await fetch(url)).json();
+    document.getElementById('sc-room').innerHTML =
+      '<option value="">ทุกห้อง</option>' +
+      rooms.map(r=>`<option value="${r.room}">${r.room} (${r.cnt} คน)</option>`).join('');
+  }catch(e){}
+}
+
+async function onScLevelChange(){
+  await loadDepts();
+  await loadRooms();
+  await loadScreenings();
+}
+
+async function onScDeptChange(){
+  await loadRooms();
   await loadScreenings();
 }
 
 async function loadScreenings(){
   const level = document.getElementById('sc-level')?.value || '';
+  const dept  = document.getElementById('sc-dept')?.value || '';
   const room  = document.getElementById('sc-room')?.value || '';
-  let url = '/api/screenings?x=1';
+  let url = '/api/screenings/roster?x=1';
   if(level) url += '&level='+encodeURIComponent(level);
+  if(dept)  url += '&dept='+encodeURIComponent(dept);
   if(room)  url += '&room='+encodeURIComponent(room);
-  try{ screenings = await api(url); }catch(e){ screenings = []; }
+  try{ scRoster = await api(url); }catch(e){ scRoster = []; }
+  screenings = scRoster.filter(s=>s.screen_id);
   try{
     const st = await api('/api/screenings/stats');
     document.getElementById('sc-done').textContent = st.total;
@@ -1339,26 +1377,51 @@ function riskPill(v){
 }
 
 function renderScreen(){
-  const q = (document.getElementById('sc-search')?.value||'').toLowerCase();
-  let data = [...screenings];
-  if(q) data = data.filter(s => (s.student_name||'').toLowerCase().includes(q) || (s.sid||'').includes(q));
-  document.getElementById('sc-body').innerHTML = data.length ? data.map(s=>`<tr>
-    <td style="font-size:12px;">${s.sid}</td>
-    <td><strong>${s.student_name}</strong></td>
-    <td>${s.level}</td>
-    <td style="font-size:12px;">${s.room}</td>
-    <td>${s.weight||'—'}</td>
-    <td>${s.height||'—'}</td>
-    <td>${bmiPill(s.bmi)}</td>
-    <td>${s.blood_type||'—'}</td>
-    <td style="max-width:130px;font-size:12px;">${riskPill(s.congenital)}</td>
-    <td style="max-width:130px;font-size:12px;">${riskPill(s.drug_allergy)}</td>
-    <td style="max-width:120px;font-size:12px;">${riskPill(s.food_allergy)}</td>
-    <td style="max-width:150px;font-size:12px;">${s.symptoms||'—'}</td>
-    <td style="font-size:12px;">${s.emergency_name||'—'}</td>
-    <td style="font-size:12px;">${s.emergency_phone||'—'}</td>
-    <td><button class="btn btn-sm btn-d" onclick="delScreening('${s.id}')">ลบ</button></td>
-  </tr>`).join('') : '<tr class="er"><td colspan="15">ยังไม่มีข้อมูลคัดกรอง</td></tr>';
+  const q  = (document.getElementById('sc-search')?.value||'').toLowerCase();
+  const st = document.getElementById('sc-status')?.value || '';
+  let data = [...scRoster];
+  if(st==='done')    data = data.filter(s=>s.screen_id);
+  if(st==='pending') data = data.filter(s=>!s.screen_id);
+  if(q) data = data.filter(s =>
+    (`${s.prefix||''}${s.fname||''} ${s.lname||''}`).toLowerCase().includes(q) || (s.sid||'').includes(q));
+
+  // room summary bar
+  const bar = document.getElementById('sc-roombar');
+  const room = document.getElementById('sc-room')?.value;
+  if(room && scRoster.length){
+    const done = scRoster.filter(s=>s.screen_id).length;
+    const total = scRoster.length;
+    const pct = Math.round(done/total*100);
+    bar.innerHTML = `📋 <strong>${room}</strong> — กรอกแล้ว <strong>${done}</strong> / ${total} คน (${pct}%) · ยังไม่กรอก <strong style="color:var(--red);">${total-done}</strong> คน`;
+    bar.style.display = 'block';
+  } else bar.style.display = 'none';
+
+  document.getElementById('sc-body').innerHTML = data.length ? data.map((s,i)=>{
+    const filled = !!s.screen_id;
+    const name = `${s.prefix||''}${s.fname||''} ${s.lname||''}`.trim();
+    return `<tr style="${filled?'':'background:#FFFBF5;'}">
+      <td style="color:var(--text3);font-size:12px;">${i+1}</td>
+      <td>${filled
+        ? '<span class="pill p-ok">✓ กรอกแล้ว</span>'
+        : '<span class="pill p-warn">ยังไม่กรอก</span>'}</td>
+      <td style="font-size:12px;">${s.sid}</td>
+      <td><strong>${name}</strong></td>
+      <td>${s.level}</td>
+      <td style="font-size:12px;">${s.room}</td>
+      <td style="font-size:12px;">${s.dept||'—'}</td>
+      <td>${s.weight||'—'}</td>
+      <td>${s.height||'—'}</td>
+      <td>${bmiPill(s.bmi)}</td>
+      <td>${s.blood_type||'—'}</td>
+      <td style="max-width:130px;font-size:12px;">${filled?riskPill(s.congenital):'—'}</td>
+      <td style="max-width:130px;font-size:12px;">${filled?riskPill(s.drug_allergy):'—'}</td>
+      <td style="max-width:120px;font-size:12px;">${filled?riskPill(s.food_allergy):'—'}</td>
+      <td style="max-width:150px;font-size:12px;">${s.symptoms||'—'}</td>
+      <td style="font-size:12px;">${s.emergency_name||'—'}</td>
+      <td style="font-size:12px;">${s.emergency_phone||'—'}</td>
+      <td>${filled?`<button class="btn btn-sm btn-d" onclick="delScreening('${s.screen_id}')">ลบ</button>`:''}</td>
+    </tr>`;
+  }).join('') : '<tr class="er"><td colspan="18">ไม่พบข้อมูล</td></tr>';
 }
 
 function delScreening(id){
@@ -1396,43 +1459,50 @@ async function exportScreenExcel(){
       s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
       s.onload=res; s.onerror=rej; document.head.appendChild(s); });
   }
-  const q = (document.getElementById('sc-search')?.value||'').toLowerCase();
-  let data = [...screenings];
-  if(q) data = data.filter(s => (s.student_name||'').toLowerCase().includes(q) || (s.sid||'').includes(q));
+  const q  = (document.getElementById('sc-search')?.value||'').toLowerCase();
+  const stf = document.getElementById('sc-status')?.value || '';
+  let data = [...scRoster];
+  if(stf==='done')    data = data.filter(s=>s.screen_id);
+  if(stf==='pending') data = data.filter(s=>!s.screen_id);
+  if(q) data = data.filter(s => (`${s.prefix||''}${s.fname||''} ${s.lname||''}`).toLowerCase().includes(q) || (s.sid||'').includes(q));
   if(!data.length){ toast('ไม่มีข้อมูลสำหรับส่งออก'); return; }
 
+  const nameOf = s => `${s.prefix||''}${s.fname||''} ${s.lname||''}`.trim();
   const wb = XLSX.utils.book_new();
-  // group by level+room -> one sheet per room
   const groups = {};
   data.forEach(s=>{ const k = `${s.level} ${s.room}`; (groups[k]=groups[k]||[]).push(s); });
 
-  // summary sheet first
-  const summary = Object.entries(groups).map(([k,v],i)=>({
-    'ลำดับ': i+1, 'ระดับชั้น/ห้อง': k, 'จำนวนที่กรอก': v.length,
-    'มีโรคประจำตัว': v.filter(s=>s.congenital&&s.congenital!=='ไม่มี').length,
-    'แพ้ยา': v.filter(s=>s.drug_allergy&&s.drug_allergy!=='ไม่มี').length,
-    'BMI ผิดปกติ': v.filter(s=>s.bmi&&(s.bmi<18.5||s.bmi>=25)).length,
-  }));
+  const summary = Object.entries(groups).map(([k,v],i)=>{
+    const done = v.filter(s=>s.screen_id).length;
+    return {
+      'ลำดับ': i+1, 'ระดับชั้น/ห้อง': k, 'แผนกวิชา': v[0].dept||'',
+      'นักเรียนทั้งหมด': v.length, 'กรอกแล้ว': done, 'ยังไม่กรอก': v.length-done,
+      'ร้อยละ': v.length ? Math.round(done/v.length*100)+'%' : '0%',
+      'มีโรคประจำตัว': v.filter(s=>s.congenital&&s.congenital!=='ไม่มี').length,
+      'แพ้ยา': v.filter(s=>s.drug_allergy&&s.drug_allergy!=='ไม่มี').length,
+      'BMI ผิดปกติ': v.filter(s=>s.bmi&&(s.bmi<18.5||s.bmi>=25)).length,
+    };
+  });
   const wsS = XLSX.utils.json_to_sheet(summary);
-  wsS['!cols']=[{wch:6},{wch:28},{wch:14},{wch:14},{wch:10},{wch:12}];
+  wsS['!cols']=[{wch:6},{wch:24},{wch:20},{wch:14},{wch:10},{wch:11},{wch:8},{wch:14},{wch:10},{wch:12}];
   XLSX.utils.book_append_sheet(wb, wsS, 'สรุปภาพรวม');
 
   Object.entries(groups).forEach(([k, list])=>{
     const rows = list.map((s,i)=>({
-      'ลำดับ': i+1, 'รหัสนักเรียน': s.sid, 'ชื่อ-นามสกุล': s.student_name,
-      'ระดับชั้น': s.level, 'ห้อง': s.room, 'สาขาวิชา': s.dept||'',
+      'ลำดับ': i+1, 'สถานะ': s.screen_id ? 'กรอกแล้ว' : 'ยังไม่กรอก',
+      'รหัสนักเรียน': s.sid, 'ชื่อ-นามสกุล': nameOf(s),
+      'ระดับชั้น': s.level, 'ห้อง': s.room, 'แผนกวิชา': s.dept||'',
       'น้ำหนัก(กก.)': s.weight||'', 'ส่วนสูง(ซม.)': s.height||'', 'BMI': s.bmi||'',
-      'หมู่เลือด': s.blood_type||'', 'โรคประจำตัว': s.congenital||'ไม่มี',
-      'แพ้ยา': s.drug_allergy||'ไม่มี', 'แพ้อาหาร': s.food_allergy||'ไม่มี',
-      'ยาที่ใช้ประจำ': s.current_meds||'ไม่มี', 'อาการที่พบบ่อย': s.symptoms||'',
+      'หมู่เลือด': s.blood_type||'', 'โรคประจำตัว': s.screen_id?(s.congenital||'ไม่มี'):'',
+      'แพ้ยา': s.screen_id?(s.drug_allergy||'ไม่มี'):'', 'แพ้อาหาร': s.screen_id?(s.food_allergy||'ไม่มี'):'',
+      'ยาที่ใช้ประจำ': s.screen_id?(s.current_meds||'ไม่มี'):'', 'อาการที่พบบ่อย': s.symptoms||'',
       'การมองเห็น': s.vision||'', 'การได้ยิน': s.hearing||'', 'ช่องปาก/ฟัน': s.dental||'',
       'ผู้ปกครอง': s.emergency_name||'', 'เบอร์โทร': s.emergency_phone||'',
       'หมายเหตุ': s.note||'', 'วันที่กรอก': s.created_at||''
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols']=[{wch:6},{wch:13},{wch:24},{wch:10},{wch:16},{wch:18},{wch:11},{wch:11},{wch:7},
+    ws['!cols']=[{wch:6},{wch:11},{wch:13},{wch:24},{wch:10},{wch:16},{wch:18},{wch:11},{wch:11},{wch:7},
       {wch:9},{wch:20},{wch:18},{wch:16},{wch:16},{wch:24},{wch:12},{wch:10},{wch:12},{wch:20},{wch:13},{wch:20},{wch:18}];
-    // sheet name max 31 chars, no special chars
     let sn = k.replace(/[\\\/\?\*\[\]:]/g,'-').slice(0,31);
     XLSX.utils.book_append_sheet(wb, ws, sn);
   });
@@ -1443,13 +1513,18 @@ async function exportScreenExcel(){
 }
 
 function exportScreenPDF(){
-  const q = (document.getElementById('sc-search')?.value||'').toLowerCase();
-  let data = [...screenings];
-  if(q) data = data.filter(s => (s.student_name||'').toLowerCase().includes(q) || (s.sid||'').includes(q));
+  const q  = (document.getElementById('sc-search')?.value||'').toLowerCase();
+  const stf = document.getElementById('sc-status')?.value || '';
+  let data = [...scRoster];
+  if(stf==='done')    data = data.filter(s=>s.screen_id);
+  if(stf==='pending') data = data.filter(s=>!s.screen_id);
+  if(q) data = data.filter(s => (`${s.prefix||''}${s.fname||''} ${s.lname||''}`).toLowerCase().includes(q) || (s.sid||'').includes(q));
   if(!data.length){ toast('ไม่มีข้อมูลสำหรับส่งออก'); return; }
 
+  const nameOf = s => `${s.prefix||''}${s.fname||''} ${s.lname||''}`.trim();
   const org = document.getElementById('org-tag')?.textContent || 'สถานศึกษา';
   const level = document.getElementById('sc-level')?.value || 'ทุกระดับชั้น';
+  const dept  = document.getElementById('sc-dept')?.value || 'ทุกแผนกวิชา';
   const room  = document.getElementById('sc-room')?.value || 'ทุกห้อง';
 
   const groups = {};
@@ -1457,26 +1532,31 @@ function exportScreenPDF(){
 
   let body = '';
   Object.entries(groups).forEach(([k, list])=>{
-    body += `<div class="grp"><div class="grp-title">${k} <span class="cnt">(${list.length} คน)</span></div>
+    const done = list.filter(s=>s.screen_id).length;
+    body += `<div class="grp"><div class="grp-title">${k} <span class="cnt">(${list[0].dept||''} · ${list.length} คน · กรอกแล้ว ${done}/${list.length})</span></div>
     <table><thead><tr>
-      <th style="width:26px;">#</th><th style="width:78px;">รหัส</th><th>ชื่อ-นามสกุล</th>
-      <th style="width:38px;">นน.</th><th style="width:38px;">สส.</th><th style="width:38px;">BMI</th>
-      <th style="width:34px;">เลือด</th><th>โรคประจำตัว</th><th>แพ้ยา</th><th style="width:88px;">ผู้ปกครอง/โทร</th>
+      <th style="width:24px;">#</th><th style="width:56px;">สถานะ</th><th style="width:76px;">รหัส</th><th>ชื่อ-นามสกุล</th>
+      <th style="width:34px;">นน.</th><th style="width:34px;">สส.</th><th style="width:34px;">BMI</th>
+      <th style="width:30px;">เลือด</th><th>โรคประจำตัว</th><th>แพ้ยา</th><th style="width:84px;">ผู้ปกครอง/โทร</th>
     </tr></thead><tbody>`;
     list.forEach((s,i)=>{
-      const risk = (s.congenital&&s.congenital!=='ไม่มี')||(s.drug_allergy&&s.drug_allergy!=='ไม่มี');
-      body += `<tr class="${risk?'risk':''}">
-        <td>${i+1}</td><td>${s.sid}</td><td>${s.student_name}</td>
+      const filled = !!s.screen_id;
+      const risk = filled && ((s.congenital&&s.congenital!=='ไม่มี')||(s.drug_allergy&&s.drug_allergy!=='ไม่มี'));
+      body += `<tr class="${risk?'risk':(filled?'':'pending')}">
+        <td>${i+1}</td>
+        <td style="text-align:center;">${filled?'<span style="color:#0F6E56;">✓</span>':'<span style="color:#BA7517;">—</span>'}</td>
+        <td>${s.sid}</td><td>${nameOf(s)}</td>
         <td>${s.weight||'-'}</td><td>${s.height||'-'}</td><td>${s.bmi||'-'}</td>
         <td>${s.blood_type||'-'}</td>
-        <td>${s.congenital||'ไม่มี'}</td><td>${s.drug_allergy||'ไม่มี'}</td>
+        <td>${filled?(s.congenital||'ไม่มี'):'-'}</td><td>${filled?(s.drug_allergy||'ไม่มี'):'-'}</td>
         <td>${s.emergency_name||'-'}<br><small>${s.emergency_phone||''}</small></td>
       </tr>`;
     });
     body += '</tbody></table></div>';
   });
 
-  const riskCount = data.filter(s=>(s.congenital&&s.congenital!=='ไม่มี')||(s.drug_allergy&&s.drug_allergy!=='ไม่มี')).length;
+  const doneCount = data.filter(s=>s.screen_id).length;
+  const riskCount = data.filter(s=>s.screen_id&&((s.congenital&&s.congenital!=='ไม่มี')||(s.drug_allergy&&s.drug_allergy!=='ไม่มี'))).length;
   const w = window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>รายงานคัดกรองสุขภาพ</title>
@@ -1495,6 +1575,7 @@ function exportScreenPDF(){
     th{background:#EDE9FE;color:#5B21B6;font-weight:600;padding:5px 4px;border:1px solid #C4B5FD;text-align:left;}
     td{padding:4px;border:1px solid #ddd;vertical-align:top;}
     tr.risk td{background:#FEF2F2;}
+    tr.pending td{background:#FFFBEB;color:#92700E;}
     small{color:#888;font-size:9px;}
     .foot{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:50px;text-align:center;page-break-inside:avoid;}
     .sign{border-top:1px solid #999;padding-top:6px;font-size:11px;color:#666;}
@@ -1506,11 +1587,11 @@ function exportScreenPDF(){
     <p>${org} · งานสวัสดิการนักเรียน นักศึกษา · ภาคเรียนที่ 2/2569</p>
   </div>
   <div class="meta">
-    <div><strong>ระดับชั้น:</strong> ${level} &nbsp;|&nbsp; <strong>ห้อง:</strong> ${room}</div>
-    <div><strong>รวม:</strong> ${data.length} คน &nbsp;|&nbsp; <strong style="color:#A32D2D;">กลุ่มเสี่ยง:</strong> ${riskCount} คน</div>
+    <div><strong>ระดับชั้น:</strong> ${level} &nbsp;|&nbsp; <strong>แผนก:</strong> ${dept} &nbsp;|&nbsp; <strong>ห้อง:</strong> ${room}</div>
+    <div><strong>รวม:</strong> ${data.length} คน &nbsp;|&nbsp; <strong style="color:#0F6E56;">กรอกแล้ว:</strong> ${doneCount} &nbsp;|&nbsp; <strong style="color:#BA7517;">ยังไม่กรอก:</strong> ${data.length-doneCount} &nbsp;|&nbsp; <strong style="color:#A32D2D;">กลุ่มเสี่ยง:</strong> ${riskCount}</div>
   </div>
   ${body}
-  <div class="legend">🔴 แถวพื้นสีแดง = นักเรียนที่มีโรคประจำตัวหรือประวัติแพ้ยา ต้องเฝ้าระวังเป็นพิเศษ</div>
+  <div class="legend">🔴 แถวพื้นสีแดง = กลุ่มเสี่ยง (มีโรคประจำตัว/แพ้ยา) &nbsp;·&nbsp; 🟡 แถวพื้นสีเหลือง = ยังไม่ได้กรอกแบบคัดกรอง &nbsp;·&nbsp; ✓ = กรอกแล้ว</div>
   <div class="foot">
     <div><div style="height:44px;"></div><div class="sign">เจ้าหน้าที่งานสวัสดิการ</div></div>
     <div><div style="height:44px;"></div><div class="sign">ผู้อำนวยการ</div></div>
