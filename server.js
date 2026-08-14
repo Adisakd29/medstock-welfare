@@ -269,12 +269,41 @@ app.get('/api/students/levels', async (req, res) => {
   res.json(rows.map(r => r.level));
 });
 
-app.get('/api/students/rooms', async (req, res) => {
+app.get('/api/students/depts', async (req, res) => {
   const { level } = req.query;
-  if (!level) return res.json([]);
-  res.json(await all(
-    'SELECT room, dept, COUNT(*) as cnt FROM students WHERE level=? GROUP BY room, dept ORDER BY room',
-    [level]));
+  let q = 'SELECT dept, COUNT(*) as cnt FROM students WHERE 1=1'; const p = [];
+  if (level) { q += ' AND level=?'; p.push(level); }
+  q += " AND dept != '' GROUP BY dept ORDER BY dept";
+  res.json(await all(q, p));
+});
+
+app.get('/api/students/rooms', async (req, res) => {
+  const { level, dept } = req.query;
+  let q = 'SELECT room, dept, level, COUNT(*) as cnt FROM students WHERE 1=1'; const p = [];
+  if (level) { q += ' AND level=?'; p.push(level); }
+  if (dept)  { q += ' AND dept=?';  p.push(dept); }
+  q += ' GROUP BY room, dept, level ORDER BY level, room';
+  res.json(await all(q, p));
+});
+
+// รายชื่อนักเรียนทั้งห้อง + สถานะการกรอกแบบคัดกรอง
+app.get('/api/screenings/roster', requireAuth, async (req, res) => {
+  const { level, room, dept, term } = req.query;
+  let q = `SELECT st.sid, st.prefix, st.fname, st.lname, st.level, st.room, st.dept,
+      sc.id as screen_id, sc.weight, sc.height, sc.bmi, sc.blood_type,
+      sc.congenital, sc.drug_allergy, sc.food_allergy, sc.current_meds, sc.symptoms,
+      sc.vision, sc.hearing, sc.dental, sc.emergency_name, sc.emergency_phone,
+      sc.note, sc.created_at
+    FROM students st
+    LEFT JOIN screenings sc ON sc.sid = st.sid`;
+  const p = [];
+  if (term) { q += ' AND sc.term = ?'; p.push(term); }
+  q += ' WHERE 1=1';
+  if (level) { q += ' AND st.level=?'; p.push(level); }
+  if (room)  { q += ' AND st.room=?';  p.push(room); }
+  if (dept)  { q += ' AND st.dept=?';  p.push(dept); }
+  q += ' ORDER BY st.level, st.room, st.sid';
+  res.json(await all(q, p));
 });
 
 app.get('/api/students/list', async (req, res) => {
