@@ -74,6 +74,9 @@ async function initDB() {
     "ALTER TABLE dispenses ADD COLUMN allergy TEXT DEFAULT 'ไม่แพ้ยา'",
     "ALTER TABLE requisitions ADD COLUMN note TEXT DEFAULT ''",
     "ALTER TABLE requisitions ADD COLUMN processed_at TEXT DEFAULT ''",
+    "ALTER TABLE students ADD COLUMN photo TEXT DEFAULT ''",
+    "ALTER TABLE students ADD COLUMN phone TEXT DEFAULT ''",
+    "ALTER TABLE students ADD COLUMN note TEXT DEFAULT ''",
   ];
   for (const cmd of alterCmds) {
     await run(cmd).catch(() => {});
@@ -104,7 +107,7 @@ async function initDB() {
 }
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '12mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 async function requireAuth(req, res, next) {
@@ -289,7 +292,8 @@ app.get('/api/students/rooms', async (req, res) => {
 // รายชื่อนักเรียนทั้งห้อง + สถานะการกรอกแบบคัดกรอง
 app.get('/api/screenings/roster', requireAuth, async (req, res) => {
   const { level, room, dept, term } = req.query;
-  let q = `SELECT st.sid, st.prefix, st.fname, st.lname, st.level, st.room, st.dept,
+  let q = `SELECT st.sid, st.prefix, st.fname, st.lname, st.level, st.room, st.dept, st.phone,
+      CASE WHEN st.photo IS NOT NULL AND st.photo != '' THEN 1 ELSE 0 END as has_photo,
       sc.id as screen_id, sc.weight, sc.height, sc.bmi, sc.blood_type,
       sc.congenital, sc.drug_allergy, sc.food_allergy, sc.current_meds, sc.symptoms,
       sc.vision, sc.hearing, sc.dental, sc.emergency_name, sc.emergency_phone,
@@ -312,6 +316,69 @@ app.get('/api/students/list', async (req, res) => {
   res.json(await all(
     'SELECT sid, prefix, fname, lname, dept FROM students WHERE level=? AND room=? ORDER BY sid',
     [level, room]));
+});
+
+// ─── STUDENTS CRUD (จัดการข้อมูลนักเรียน) ────────────────────
+app.get('/api/students', requireAuth, async (req, res) => {
+  const { level, room, dept, search, withPhoto } = req.query;
+  const cols = withPhoto === '1'
+    ? 'sid,prefix,fname,lname,level,room,dept,phone,note,photo'
+    : "sid,prefix,fname,lname,level,room,dept,phone,note,CASE WHEN photo IS NOT NULL AND photo != '' THEN 1 ELSE 0 END as has_photo";
+  let q = `SELECT ${cols} FROM students WHERE 1=1`; const p = [];
+  if (level) { q += ' AND level=?'; p.push(level); }
+  if (room)  { q += ' AND room=?';  p.push(room); }
+  if (dept)  { q += ' AND dept=?';  p.push(dept); }
+  if (search){ q += ' AND (fname LIKE ? OR lname LIKE ? OR sid LIKE ?)';
+               p.push('%'+search+'%','%'+search+'%','%'+search+'%'); }
+  q += ' ORDER BY level, room, sid';
+  res.json(await all(q, p));
+});
+
+app.get('/api/students/photo/:sid', async (req, res) => {
+  const r = await get('SELECT photo FROM students WHERE sid=?', [req.params.sid]);
+  res.json({ photo: (r && r.photo) ? r.photo : '' });
+});
+
+app.post('/api/students', requireAuth, async (req, res) => {
+  const b = req.body;
+  if (!b.sid || !b.fname) return res.status(400).json({ error: 'กรุณากรอกรหัสและชื่อ' });
+  if (!b.level || !b.room) return res.status(400).json({ error: 'กรุณาระบุระดับชั้นและห้อง' });
+  const dup = await get('SELECT sid FROM students WHERE sid=?', [b.sid]);
+  if (dup) return res.status(400).json({ error: 'รหัสนักเรียนนี้มีอยู่แล้ว' });
+  await run(`INSERT INTO students (sid,prefix,fname,lname,level,room,dept,phone,note,photo)
+    VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    [b.sid, b.prefix||'', b.fname, b.lname||'', b.level, b.room, b.dept||'',
+     b.phone||'', b.note||'', b.photo||'']);
+  res.json({ ok: true, sid: b.sid });
+});
+
+app.put('/api/students/:sid', requireAuth, async (req, res) => {
+  const b = req.body;
+  if (!b.fname) return res.status(400).json({ error: 'กรุณากรอกชื่อ' });
+  // ถ้าไม่ได้ส่ง photo มา = ไม่แตะรูปเดิม
+  if (b.photo === undefined) {
+    await run(`UPDATE students SET prefix=?,fname=?,lname=?,level=?,room=?,dept=?,phone=?,note=? WHERE sid=?`,
+      [b.prefix||'', b.fname, b.lname||'', b.level, b.room, b.dept||'', b.phone||'', b.note||'', req.params.sid]);
+  } else {
+    await run(`UPDATE students SET prefix=?,fname=?,lname=?,level=?,room=?,dept=?,phone=?,note=?,photo=? WHERE sid=?`,
+      [b.prefix||'', b.fname, b.lname||'', b.level, b.room, b.dept||'', b.phone||'', b.note||'',
+       b.photo||'', req.params.sid]);
+  }
+  res.json({ ok: true });
+});
+
+app.put('/api/students/:sid/photo', async (req, res) => {
+  const { photo } = req.body;
+  const stu = await get('SELECT sid FROM students WHERE sid=?', [req.params.sid]);
+  if (!stu) return res.status(404).json({ error: 'ไม่พบนักเรียน' });
+  await run('UPDATE students SET photo=? WHERE sid=?', [photo||'', req.params.sid]);
+  res.json({ ok: true });
+});
+
+app.delete('/api/students/:sid', requireAuth, async (req, res) => {
+  await run('DELETE FROM screenings WHERE sid=?', [req.params.sid]);
+  await run('DELETE FROM students WHERE sid=?', [req.params.sid]);
+  res.json({ ok: true });
 });
 
 // ─── SCREENINGS (คัดกรองสุขภาพ) ───────────────────────────────
