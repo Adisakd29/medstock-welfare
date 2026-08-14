@@ -192,6 +192,7 @@ tr:hover td{background:#fafaf8;}
     <div class="nav-lbl">ระบบ</div>
     <div class="nav-i" data-page="alerts"><svg viewBox="0 0 16 16"><path d="M8 1.5a5 5 0 0 1 5 5v2.5l1 2H2l1-2V6.5a5 5 0 0 1 5-5z"/><path d="M6 13.5a2 2 0 0 0 4 0" stroke-linecap="round"/></svg>การแจ้งเตือน<span class="nav-badge" id="alert-badge" style="display:none">0</span></div>
     <div class="nav-i" data-page="requisition"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M5 8h6M8 5v6" stroke-linecap="round"/></svg>ใบเบิกยาครู<span class="nav-badge" id="req-badge" style="display:none;background:#E6F1FB;color:#185FA5;">0</span></div>
+    <div class="nav-i" data-page="screening"><svg viewBox="0 0 16 16"><path d="M14 5.5a3.5 3.5 0 0 0-5-3.2L8 3l-1-.7a3.5 3.5 0 0 0-5 3.2c0 .8.3 1.5.8 2L8 13l5.2-5.5c.5-.5.8-1.2.8-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>คัดกรองสุขภาพ</div>
     <div class="nav-i" data-page="settings"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke-linecap="round"/></svg>ตั้งค่า</div>
   </div>
 </div>
@@ -323,6 +324,44 @@ tr:hover td{background:#fafaf8;}
     </div>
   </div>
 
+
+  <!-- SCREENING PAGE -->
+  <div class="page" id="page-screening">
+    <div class="ph">
+      <div><div class="pt">แบบคัดกรองสุขภาพนักเรียน</div><div class="ps">ฐานข้อมูลสุขภาพ แยกตามระดับชั้นและห้อง</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn" onclick="showScreeningQR()" style="background:#F3EEFE;color:#5B21B6;border-color:#7C3AED;">📱 QR คัดกรอง</button>
+        <button class="btn" onclick="exportScreenExcel()">📊 Excel</button>
+        <button class="btn" onclick="exportScreenPDF()">📄 PDF</button>
+      </div>
+    </div>
+
+    <div class="metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
+      <div class="metric"><div class="mlbl">กรอกแล้ว</div><div class="mval ok" id="sc-done">0</div><div class="msub">คน</div></div>
+      <div class="metric"><div class="mlbl">นักเรียนทั้งหมด</div><div class="mval" id="sc-total">0</div><div class="msub">คน</div></div>
+      <div class="metric"><div class="mlbl">ยังไม่กรอก</div><div class="mval warn" id="sc-pending">0</div><div class="msub">คน</div></div>
+      <div class="metric"><div class="mlbl">กลุ่มเสี่ยง</div><div class="mval danger" id="sc-risk">0</div><div class="msub">โรคประจำตัว/แพ้ยา</div></div>
+    </div>
+
+    <div class="card" style="padding-bottom:0;">
+      <div class="sr">
+        <select id="sc-level" onchange="onScLevelChange()" style="width:130px;"><option value="">ทุกระดับชั้น</option></select>
+        <select id="sc-room" onchange="loadScreenings()" style="width:220px;"><option value="">ทุกห้อง</option></select>
+        <input type="text" id="sc-search" placeholder="ค้นหาชื่อ / รหัสนักเรียน..." oninput="renderScreen()" style="flex:1;">
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ระดับชั้น</th><th>ห้อง</th>
+            <th>น้ำหนัก</th><th>ส่วนสูง</th><th>BMI</th><th>หมู่เลือด</th>
+            <th>โรคประจำตัว</th><th>แพ้ยา</th><th>แพ้อาหาร</th><th>อาการ</th>
+            <th>ผู้ปกครอง</th><th>โทร</th><th></th>
+          </tr></thead>
+          <tbody id="sc-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
 </div>
 </div>
@@ -552,6 +591,7 @@ document.querySelectorAll('.nav-i').forEach(el => {
     if (pg === 'receive') renderRecv();
     if (pg === 'alerts') renderAlerts();
     if (pg === 'settings') loadSettingsUI();
+    if (pg === 'screening') initScreening();
     if (pg === 'requisition') { populateSel('rq-med'); loadRequisitions().then(renderReq); }
   });
 });
@@ -1244,6 +1284,242 @@ function downloadReqPDF(id) {
 
 function nowBKK() {
   return new Date().toLocaleString('sv-SE', {timeZone:'Asia/Bangkok'}).replace('T',' ');
+}
+
+// ─── SCREENING ────────────────────────────────────────────────
+let screenings = [], scRooms = [];
+
+async function initScreening(){
+  try{
+    const levels = await (await fetch('/api/students/levels')).json();
+    const sel = document.getElementById('sc-level');
+    sel.innerHTML = '<option value="">ทุกระดับชั้น</option>' + levels.map(l=>`<option value="${l}">${l}</option>`).join('');
+  }catch(e){}
+  await loadScreenings();
+}
+
+async function onScLevelChange(){
+  const level = document.getElementById('sc-level').value;
+  const roomSel = document.getElementById('sc-room');
+  if(!level){ roomSel.innerHTML = '<option value="">ทุกห้อง</option>'; await loadScreenings(); return; }
+  const rooms = await (await fetch('/api/students/rooms?level='+encodeURIComponent(level))).json();
+  scRooms = rooms;
+  roomSel.innerHTML = '<option value="">ทุกห้อง</option>' +
+    rooms.map(r=>`<option value="${r.room}">${r.room} — ${r.dept} (${r.cnt})</option>`).join('');
+  await loadScreenings();
+}
+
+async function loadScreenings(){
+  const level = document.getElementById('sc-level')?.value || '';
+  const room  = document.getElementById('sc-room')?.value || '';
+  let url = '/api/screenings?x=1';
+  if(level) url += '&level='+encodeURIComponent(level);
+  if(room)  url += '&room='+encodeURIComponent(room);
+  try{ screenings = await api(url); }catch(e){ screenings = []; }
+  try{
+    const st = await api('/api/screenings/stats');
+    document.getElementById('sc-done').textContent = st.total;
+    document.getElementById('sc-total').textContent = st.students;
+    document.getElementById('sc-pending').textContent = Math.max(0, st.students - st.total);
+    document.getElementById('sc-risk').textContent = st.risk;
+  }catch(e){}
+  renderScreen();
+}
+
+function bmiPill(b){
+  if(!b) return '—';
+  let cls='p-ok';
+  if(b<18.5||b>=25) cls='p-warn';
+  if(b>=30) cls='p-danger';
+  return `<span class="pill ${cls}">${b}</span>`;
+}
+function riskPill(v){
+  if(!v||v==='ไม่มี') return '<span style="color:var(--text3);">—</span>';
+  return `<span class="pill p-danger" style="font-size:11px;">${v}</span>`;
+}
+
+function renderScreen(){
+  const q = (document.getElementById('sc-search')?.value||'').toLowerCase();
+  let data = [...screenings];
+  if(q) data = data.filter(s => (s.student_name||'').toLowerCase().includes(q) || (s.sid||'').includes(q));
+  document.getElementById('sc-body').innerHTML = data.length ? data.map(s=>`<tr>
+    <td style="font-size:12px;">${s.sid}</td>
+    <td><strong>${s.student_name}</strong></td>
+    <td>${s.level}</td>
+    <td style="font-size:12px;">${s.room}</td>
+    <td>${s.weight||'—'}</td>
+    <td>${s.height||'—'}</td>
+    <td>${bmiPill(s.bmi)}</td>
+    <td>${s.blood_type||'—'}</td>
+    <td style="max-width:130px;font-size:12px;">${riskPill(s.congenital)}</td>
+    <td style="max-width:130px;font-size:12px;">${riskPill(s.drug_allergy)}</td>
+    <td style="max-width:120px;font-size:12px;">${riskPill(s.food_allergy)}</td>
+    <td style="max-width:150px;font-size:12px;">${s.symptoms||'—'}</td>
+    <td style="font-size:12px;">${s.emergency_name||'—'}</td>
+    <td style="font-size:12px;">${s.emergency_phone||'—'}</td>
+    <td><button class="btn btn-sm btn-d" onclick="delScreening('${s.id}')">ลบ</button></td>
+  </tr>`).join('') : '<tr class="er"><td colspan="15">ยังไม่มีข้อมูลคัดกรอง</td></tr>';
+}
+
+function delScreening(id){
+  showConfirm('ลบข้อมูลคัดกรองนี้?','ไม่สามารถย้อนกลับได้', async ()=>{
+    await api('/api/screenings/'+id,'DELETE');
+    await loadScreenings();
+    toast('ลบแล้ว');
+  });
+}
+
+async function showScreeningQR(){
+  const data = await api('/api/qr/screening');
+  const org = document.getElementById('org-tag')?.textContent || 'สถานศึกษา';
+  const w = window.open('','_blank','width=480,height=640');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>QR คัดกรองสุขภาพ</title>
+  <style>body{font-family:sans-serif;text-align:center;padding:32px;background:#F7F5FB;}
+  img{width:280px;height:280px;border:3px solid #7C3AED;border-radius:16px;}
+  h2{color:#7C3AED;margin-bottom:6px;font-size:21px;}
+  p{color:#666;font-size:13px;margin:6px 0;}
+  .url{font-size:11px;color:#999;word-break:break-all;margin-top:8px;padding:6px;background:#eee;border-radius:6px;}
+  button{margin-top:16px;padding:11px 30px;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;}
+  @media print{button{display:none;}}</style></head><body>
+  <h2>💜 แบบคัดกรองสุขภาพนักเรียน</h2>
+  <p>${org} · งานสวัสดิการนักเรียน นักศึกษา</p>
+  <img src="${data.qr}" alt="QR">
+  <div class="url">${data.url}</div>
+  <p style="margin-top:12px;color:#5B21B6;font-size:14px;font-weight:600;">นักเรียนสแกน QR นี้เพื่อกรอกแบบคัดกรองสุขภาพ</p>
+  <button onclick="window.print()">🖨️ พิมพ์ QR</button>
+  </body></html>`);
+}
+
+async function exportScreenExcel(){
+  if(!window.XLSX){
+    await new Promise((res,rej)=>{ const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+  }
+  const q = (document.getElementById('sc-search')?.value||'').toLowerCase();
+  let data = [...screenings];
+  if(q) data = data.filter(s => (s.student_name||'').toLowerCase().includes(q) || (s.sid||'').includes(q));
+  if(!data.length){ toast('ไม่มีข้อมูลสำหรับส่งออก'); return; }
+
+  const wb = XLSX.utils.book_new();
+  // group by level+room -> one sheet per room
+  const groups = {};
+  data.forEach(s=>{ const k = `${s.level} ${s.room}`; (groups[k]=groups[k]||[]).push(s); });
+
+  // summary sheet first
+  const summary = Object.entries(groups).map(([k,v],i)=>({
+    'ลำดับ': i+1, 'ระดับชั้น/ห้อง': k, 'จำนวนที่กรอก': v.length,
+    'มีโรคประจำตัว': v.filter(s=>s.congenital&&s.congenital!=='ไม่มี').length,
+    'แพ้ยา': v.filter(s=>s.drug_allergy&&s.drug_allergy!=='ไม่มี').length,
+    'BMI ผิดปกติ': v.filter(s=>s.bmi&&(s.bmi<18.5||s.bmi>=25)).length,
+  }));
+  const wsS = XLSX.utils.json_to_sheet(summary);
+  wsS['!cols']=[{wch:6},{wch:28},{wch:14},{wch:14},{wch:10},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, wsS, 'สรุปภาพรวม');
+
+  Object.entries(groups).forEach(([k, list])=>{
+    const rows = list.map((s,i)=>({
+      'ลำดับ': i+1, 'รหัสนักเรียน': s.sid, 'ชื่อ-นามสกุล': s.student_name,
+      'ระดับชั้น': s.level, 'ห้อง': s.room, 'สาขาวิชา': s.dept||'',
+      'น้ำหนัก(กก.)': s.weight||'', 'ส่วนสูง(ซม.)': s.height||'', 'BMI': s.bmi||'',
+      'หมู่เลือด': s.blood_type||'', 'โรคประจำตัว': s.congenital||'ไม่มี',
+      'แพ้ยา': s.drug_allergy||'ไม่มี', 'แพ้อาหาร': s.food_allergy||'ไม่มี',
+      'ยาที่ใช้ประจำ': s.current_meds||'ไม่มี', 'อาการที่พบบ่อย': s.symptoms||'',
+      'การมองเห็น': s.vision||'', 'การได้ยิน': s.hearing||'', 'ช่องปาก/ฟัน': s.dental||'',
+      'ผู้ปกครอง': s.emergency_name||'', 'เบอร์โทร': s.emergency_phone||'',
+      'หมายเหตุ': s.note||'', 'วันที่กรอก': s.created_at||''
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols']=[{wch:6},{wch:13},{wch:24},{wch:10},{wch:16},{wch:18},{wch:11},{wch:11},{wch:7},
+      {wch:9},{wch:20},{wch:18},{wch:16},{wch:16},{wch:24},{wch:12},{wch:10},{wch:12},{wch:20},{wch:13},{wch:20},{wch:18}];
+    // sheet name max 31 chars, no special chars
+    let sn = k.replace(/[\\\/\?\*\[\]:]/g,'-').slice(0,31);
+    XLSX.utils.book_append_sheet(wb, ws, sn);
+  });
+
+  const org = document.getElementById('org-tag')?.textContent || 'MedStock';
+  XLSX.writeFile(wb, `${org}_คัดกรองสุขภาพ_${today()}.xlsx`);
+  toast(`ส่งออก Excel แล้ว (${data.length} คน / ${Object.keys(groups).length} ห้อง)`);
+}
+
+function exportScreenPDF(){
+  const q = (document.getElementById('sc-search')?.value||'').toLowerCase();
+  let data = [...screenings];
+  if(q) data = data.filter(s => (s.student_name||'').toLowerCase().includes(q) || (s.sid||'').includes(q));
+  if(!data.length){ toast('ไม่มีข้อมูลสำหรับส่งออก'); return; }
+
+  const org = document.getElementById('org-tag')?.textContent || 'สถานศึกษา';
+  const level = document.getElementById('sc-level')?.value || 'ทุกระดับชั้น';
+  const room  = document.getElementById('sc-room')?.value || 'ทุกห้อง';
+
+  const groups = {};
+  data.forEach(s=>{ const k = `${s.level} — ${s.room}`; (groups[k]=groups[k]||[]).push(s); });
+
+  let body = '';
+  Object.entries(groups).forEach(([k, list])=>{
+    body += `<div class="grp"><div class="grp-title">${k} <span class="cnt">(${list.length} คน)</span></div>
+    <table><thead><tr>
+      <th style="width:26px;">#</th><th style="width:78px;">รหัส</th><th>ชื่อ-นามสกุล</th>
+      <th style="width:38px;">นน.</th><th style="width:38px;">สส.</th><th style="width:38px;">BMI</th>
+      <th style="width:34px;">เลือด</th><th>โรคประจำตัว</th><th>แพ้ยา</th><th style="width:88px;">ผู้ปกครอง/โทร</th>
+    </tr></thead><tbody>`;
+    list.forEach((s,i)=>{
+      const risk = (s.congenital&&s.congenital!=='ไม่มี')||(s.drug_allergy&&s.drug_allergy!=='ไม่มี');
+      body += `<tr class="${risk?'risk':''}">
+        <td>${i+1}</td><td>${s.sid}</td><td>${s.student_name}</td>
+        <td>${s.weight||'-'}</td><td>${s.height||'-'}</td><td>${s.bmi||'-'}</td>
+        <td>${s.blood_type||'-'}</td>
+        <td>${s.congenital||'ไม่มี'}</td><td>${s.drug_allergy||'ไม่มี'}</td>
+        <td>${s.emergency_name||'-'}<br><small>${s.emergency_phone||''}</small></td>
+      </tr>`;
+    });
+    body += '</tbody></table></div>';
+  });
+
+  const riskCount = data.filter(s=>(s.congenital&&s.congenital!=='ไม่มี')||(s.drug_allergy&&s.drug_allergy!=='ไม่มี')).length;
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>รายงานคัดกรองสุขภาพ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Sarabun',sans-serif;padding:24px;color:#1a1a18;font-size:11px;}
+    .head{text-align:center;border-bottom:2.5px solid #7C3AED;padding-bottom:12px;margin-bottom:16px;}
+    .head h1{font-size:19px;color:#5B21B6;font-weight:600;}
+    .head p{font-size:12px;color:#666;margin-top:3px;}
+    .meta{display:flex;justify-content:space-between;font-size:11px;color:#666;margin-bottom:14px;padding:8px 12px;background:#F3EEFE;border-radius:6px;}
+    .grp{margin-bottom:20px;page-break-inside:avoid;}
+    .grp-title{font-size:13px;font-weight:600;color:#5B21B6;margin-bottom:6px;padding:5px 10px;background:#F3EEFE;border-radius:5px;}
+    .cnt{font-weight:400;color:#888;font-size:11px;}
+    table{width:100%;border-collapse:collapse;font-size:10px;}
+    th{background:#EDE9FE;color:#5B21B6;font-weight:600;padding:5px 4px;border:1px solid #C4B5FD;text-align:left;}
+    td{padding:4px;border:1px solid #ddd;vertical-align:top;}
+    tr.risk td{background:#FEF2F2;}
+    small{color:#888;font-size:9px;}
+    .foot{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:50px;text-align:center;page-break-inside:avoid;}
+    .sign{border-top:1px solid #999;padding-top:6px;font-size:11px;color:#666;}
+    .legend{margin-top:10px;font-size:10px;color:#888;}
+    @media print{button{display:none;} body{padding:12px;} @page{size:A4 landscape;margin:10mm;}}
+  </style></head><body>
+  <div class="head">
+    <h1>รายงานแบบคัดกรองสุขภาพนักเรียน นักศึกษา</h1>
+    <p>${org} · งานสวัสดิการนักเรียน นักศึกษา · ภาคเรียนที่ 2/2569</p>
+  </div>
+  <div class="meta">
+    <div><strong>ระดับชั้น:</strong> ${level} &nbsp;|&nbsp; <strong>ห้อง:</strong> ${room}</div>
+    <div><strong>รวม:</strong> ${data.length} คน &nbsp;|&nbsp; <strong style="color:#A32D2D;">กลุ่มเสี่ยง:</strong> ${riskCount} คน</div>
+  </div>
+  ${body}
+  <div class="legend">🔴 แถวพื้นสีแดง = นักเรียนที่มีโรคประจำตัวหรือประวัติแพ้ยา ต้องเฝ้าระวังเป็นพิเศษ</div>
+  <div class="foot">
+    <div><div style="height:44px;"></div><div class="sign">เจ้าหน้าที่งานสวัสดิการ</div></div>
+    <div><div style="height:44px;"></div><div class="sign">ผู้อำนวยการ</div></div>
+  </div>
+  <div style="text-align:center;margin-top:22px;">
+    <button onclick="window.print()" style="padding:11px 32px;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;font-family:inherit;">🖨️ พิมพ์ / บันทึกเป็น PDF</button>
+  </div>
+  </body></html>`);
+  toast('เปิดหน้ารายงาน PDF แล้ว');
 }
 
 </script>
