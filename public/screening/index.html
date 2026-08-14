@@ -1,1 +1,448 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>แบบคัดกรองสุขภาพนักเรียน</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--purple:#7C3AED;--purple-dark:#5B21B6;--purple-light:#F3EEFE;--purple-text:#5B21B6;
+--green:#1D9E75;--green-light:#E1F5EE;--red:#A32D2D;--red-light:#FCEBEB;
+--amber:#BA7517;--amber-light:#FAEEDA;--border:#E0DED8;--text:#1a1a18;--text2:#666660;--bg:#F7F5FB;}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+.header{background:var(--purple);padding:20px 20px 26px;text-align:center;}
+.header-icon{width:52px;height:52px;background:rgba(255,255,255,0.2);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+.header-icon svg{width:28px;height:28px;stroke:#fff;fill:none;stroke-width:2;}
+.header h1{color:#fff;font-size:20px;font-weight:600;}
+.header p{color:rgba(255,255,255,0.85);font-size:13px;margin-top:4px;}
+.org-name{font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px;}
+.container{padding:16px;max-width:520px;margin:0 auto;}
+.card{background:#fff;border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+.section-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.step-num{width:20px;height:20px;border-radius:50%;background:var(--purple);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.form-group{margin-bottom:13px;}
+.form-group label{display:block;font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px;}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-family:'Sarabun',sans-serif;font-size:15px;color:var(--text);background:#fff;-webkit-appearance:none;appearance:none;outline:none;transition:border 0.15s;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--purple);}
+.form-group select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px;}
+.form-group textarea{height:70px;resize:none;line-height:1.5;}
+.required{color:var(--red);}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.radio-group{display:flex;gap:8px;flex-wrap:wrap;}
+.radio-opt{flex:1;min-width:80px;}
+.radio-opt input{display:none;}
+.radio-opt label{display:flex;align-items:center;justify-content:center;gap:5px;padding:9px 6px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;color:var(--text2);text-align:center;}
+.radio-opt input:checked + label{border-color:var(--purple);background:var(--purple-light);color:var(--purple-text);}
+.radio-opt.danger input:checked + label{border-color:var(--red);background:var(--red-light);color:var(--red);}
+.detail-box{background:var(--red-light);border-radius:10px;padding:11px;margin-top:9px;display:none;}
+.detail-box.show{display:block;}
+.detail-box label{color:var(--red);font-size:13px;font-weight:500;margin-bottom:5px;display:block;}
+.detail-box input{width:100%;padding:9px 11px;border:1.5px solid #f09595;border-radius:8px;font-family:'Sarabun',sans-serif;font-size:14px;background:#fff;outline:none;}
+.chk-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.chk-opt{display:flex;cursor:pointer;}
+.chk-opt input{display:none;}
+.chk-opt span{display:flex;align-items:center;gap:7px;width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-weight:500;color:var(--text2);transition:all 0.15s;}
+.chk-opt input:checked + span{border-color:var(--purple);background:var(--purple-light);color:var(--purple-text);}
+.chk-opt span::before{content:'';width:15px;height:15px;border-radius:4px;border:2px solid currentColor;display:inline-block;flex-shrink:0;}
+.chk-opt input:checked + span::before{background:var(--purple);border-color:var(--purple);content:'✓';color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;}
+.bmi-box{background:var(--green-light);border-radius:10px;padding:11px 14px;margin-top:9px;font-size:14px;color:#0F6E56;font-weight:600;display:none;}
+.bmi-box.show{display:block;}
+.btn-submit{width:100%;padding:15px;background:var(--purple);color:#fff;border:none;border-radius:12px;font-family:'Sarabun',sans-serif;font-size:17px;font-weight:600;cursor:pointer;margin-top:4px;}
+.btn-submit:disabled{background:#aaa;cursor:not-allowed;}
+.error-msg{background:var(--red-light);color:var(--red);border-radius:8px;padding:10px 13px;font-size:13px;margin-bottom:12px;display:none;}
+.error-msg.show{display:block;}
+.notice{background:var(--purple-light);border-radius:10px;padding:11px 14px;font-size:13px;color:var(--purple-text);margin-bottom:14px;line-height:1.6;}
+.success-screen{text-align:center;padding:32px 20px;}
+.success-icon{width:72px;height:72px;background:var(--purple-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+.success-icon svg{width:36px;height:36px;stroke:var(--purple);fill:none;stroke-width:2.5;}
+.success-title{font-size:22px;font-weight:600;margin-bottom:8px;}
+.success-sub{font-size:15px;color:var(--text2);line-height:1.6;}
+.success-detail{background:var(--purple-light);border-radius:12px;padding:14px;margin:16px 0;text-align:left;font-size:14px;color:var(--purple-text);line-height:2;}
+.btn-again{margin-top:8px;padding:13px 24px;background:#fff;border:1.5px solid var(--border);border-radius:10px;font-family:'Sarabun',sans-serif;font-size:15px;font-weight:500;color:var(--text);cursor:pointer;}
+.hidden{display:none;}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <h1>แบบคัดกรองสุขภาพ</h1>
+  <p>งานสวัสดิการนักเรียน นักศึกษา</p>
+  <div class="org-name" id="org-display"></div>
+</div>
 
+<div class="container" id="form-view">
+  <div class="error-msg" id="error-msg"></div>
+  <div class="notice">📋 กรุณากรอกข้อมูลสุขภาพให้ครบถ้วนตามความเป็นจริง เพื่อประโยชน์ในการดูแลสุขภาพของนักเรียน</div>
+
+  <!-- STEP 1: ระบุตัวตน -->
+  <div class="card">
+    <div class="section-title"><span class="step-num">1</span> ระบุตัวตนนักเรียน</div>
+    <div class="form-group">
+      <label>ระดับชั้น <span class="required">*</span></label>
+      <select id="sel-level" onchange="onLevelChange()"><option value="">— กำลังโหลด... —</option></select>
+    </div>
+    <div class="form-group">
+      <label>ห้อง / สาขาวิชา <span class="required">*</span></label>
+      <select id="sel-room" onchange="onRoomChange()" disabled><option value="">— เลือกระดับชั้นก่อน —</option></select>
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>ชื่อ-นามสกุล <span class="required">*</span></label>
+      <select id="sel-student" onchange="onStudentChange()" disabled><option value="">— เลือกห้องก่อน —</option></select>
+    </div>
+  </div>
+
+  <!-- STEP 2: ข้อมูลร่างกาย -->
+  <div class="card">
+    <div class="section-title"><span class="step-num">2</span> ข้อมูลร่างกาย</div>
+    <div class="row2">
+      <div class="form-group">
+        <label>น้ำหนัก (กก.) <span class="required">*</span></label>
+        <input type="number" id="weight" step="0.1" min="20" max="200" placeholder="เช่น 55" oninput="calcBMI()">
+      </div>
+      <div class="form-group">
+        <label>ส่วนสูง (ซม.) <span class="required">*</span></label>
+        <input type="number" id="height" step="0.1" min="100" max="220" placeholder="เช่น 165" oninput="calcBMI()">
+      </div>
+    </div>
+    <div class="bmi-box" id="bmi-box"></div>
+    <div class="form-group" style="margin-top:12px;margin-bottom:0;">
+      <label>หมู่เลือด</label>
+      <div class="radio-group">
+        <div class="radio-opt"><input type="radio" name="blood" id="b1" value="A"><label for="b1">A</label></div>
+        <div class="radio-opt"><input type="radio" name="blood" id="b2" value="B"><label for="b2">B</label></div>
+        <div class="radio-opt"><input type="radio" name="blood" id="b3" value="AB"><label for="b3">AB</label></div>
+        <div class="radio-opt"><input type="radio" name="blood" id="b4" value="O"><label for="b4">O</label></div>
+        <div class="radio-opt"><input type="radio" name="blood" id="b5" value="ไม่ทราบ"><label for="b5">ไม่ทราบ</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: ประวัติสุขภาพ -->
+  <div class="card">
+    <div class="section-title"><span class="step-num">3</span> ประวัติสุขภาพ</div>
+
+    <div class="form-group">
+      <label>โรคประจำตัว <span class="required">*</span></label>
+      <div class="radio-group">
+        <div class="radio-opt"><input type="radio" name="cong" id="c1" value="ไม่มี" onchange="tog('cong','box-cong')"><label for="c1">ไม่มี</label></div>
+        <div class="radio-opt danger"><input type="radio" name="cong" id="c2" value="มี" onchange="tog('cong','box-cong')"><label for="c2">มี</label></div>
+      </div>
+      <div class="detail-box" id="box-cong">
+        <label>ระบุโรคประจำตัว <span class="required">*</span></label>
+        <input type="text" id="cong-detail" placeholder="เช่น หอบหืด, เบาหวาน, ภูมิแพ้, ลมชัก...">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>ประวัติแพ้ยา <span class="required">*</span></label>
+      <div class="radio-group">
+        <div class="radio-opt"><input type="radio" name="dallergy" id="d1" value="ไม่มี" onchange="tog('dallergy','box-dallergy')"><label for="d1">ไม่มี</label></div>
+        <div class="radio-opt danger"><input type="radio" name="dallergy" id="d2" value="มี" onchange="tog('dallergy','box-dallergy')"><label for="d2">มี</label></div>
+      </div>
+      <div class="detail-box" id="box-dallergy">
+        <label>ระบุชื่อยาที่แพ้ <span class="required">*</span></label>
+        <input type="text" id="dallergy-detail" placeholder="เช่น เพนิซิลิน, แอสไพริน, ซัลฟา...">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>ประวัติแพ้อาหาร</label>
+      <div class="radio-group">
+        <div class="radio-opt"><input type="radio" name="fallergy" id="f1" value="ไม่มี" onchange="tog('fallergy','box-fallergy')"><label for="f1">ไม่มี</label></div>
+        <div class="radio-opt danger"><input type="radio" name="fallergy" id="f2" value="มี" onchange="tog('fallergy','box-fallergy')"><label for="f2">มี</label></div>
+      </div>
+      <div class="detail-box" id="box-fallergy">
+        <label>ระบุอาหารที่แพ้</label>
+        <input type="text" id="fallergy-detail" placeholder="เช่น อาหารทะเล, ถั่ว, นมวัว, ไข่...">
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:0;">
+      <label>ยาที่ใช้ประจำ</label>
+      <div class="radio-group">
+        <div class="radio-opt"><input type="radio" name="meds" id="m1" value="ไม่มี" onchange="tog('meds','box-meds')"><label for="m1">ไม่มี</label></div>
+        <div class="radio-opt danger"><input type="radio" name="meds" id="m2" value="มี" onchange="tog('meds','box-meds')"><label for="m2">มี</label></div>
+      </div>
+      <div class="detail-box" id="box-meds">
+        <label>ระบุยาที่ใช้ประจำ</label>
+        <input type="text" id="meds-detail" placeholder="เช่น ยาพ่นหอบหืด, ยาความดัน...">
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: ตรวจร่างกายเบื้องต้น -->
+  <div class="card">
+    <div class="section-title"><span class="step-num">4</span> ตรวจร่างกายเบื้องต้น</div>
+    <div class="form-group">
+      <label>การมองเห็น</label>
+      <div class="radio-group">
+        <div class="radio-opt"><input type="radio" name="vision" id="v1" value="ปกติ"><label for="v1">ปกติ</label></div>
+        <div class="radio-opt"><input type="radio" name="vision" id="v2" value="สายตาสั้น"><label for="v2">สายตาสั้น</label></div>
+        <div class="radio-opt"><input type="radio" name="vision" id="v3" value="สายตายาว"><label for="v3">สายตายาว</label></div>
+        <div class="radio-opt"><input type="radio" name="vision" id="v4" value="ใส่แว่น"><label for="v4">ใส่แว่น</label></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>การได้ยิน</label>
+      <div class="radio-group">
+        <div class="radio-opt"><input type="radio" name="hearing" id="h1" value="ปกติ"><label for="h1">ปกติ</label></div>
+        <div class="radio-opt"><input type="radio" name="hearing" id="h2" value="ผิดปกติ"><label for="h2">ผิดปกติ</label></div>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>สุขภาพช่องปาก/ฟัน</label>
+      <div class="radio-group">
+        <div class="radio-opt"><input type="radio" name="dental" id="t1" value="ปกติ"><label for="t1">ปกติ</label></div>
+        <div class="radio-opt"><input type="radio" name="dental" id="t2" value="ฟันผุ"><label for="t2">ฟันผุ</label></div>
+        <div class="radio-opt"><input type="radio" name="dental" id="t3" value="เหงือกอักเสบ"><label for="t3">เหงือกอักเสบ</label></div>
+        <div class="radio-opt"><input type="radio" name="dental" id="t4" value="จัดฟัน"><label for="t4">จัดฟัน</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 5: อาการที่พบบ่อย -->
+  <div class="card">
+    <div class="section-title"><span class="step-num">5</span> อาการที่พบบ่อย (เลือกได้หลายข้อ)</div>
+    <div class="chk-grid">
+      <label class="chk-opt"><input type="checkbox" value="ปวดศีรษะบ่อย"><span>🤕 ปวดศีรษะบ่อย</span></label>
+      <label class="chk-opt"><input type="checkbox" value="ปวดท้องบ่อย"><span>🤢 ปวดท้องบ่อย</span></label>
+      <label class="chk-opt"><input type="checkbox" value="เป็นหวัดบ่อย"><span>🤧 เป็นหวัดบ่อย</span></label>
+      <label class="chk-opt"><input type="checkbox" value="เหนื่อยง่าย"><span>😮‍💨 เหนื่อยง่าย</span></label>
+      <label class="chk-opt"><input type="checkbox" value="นอนไม่หลับ"><span>😴 นอนไม่หลับ</span></label>
+      <label class="chk-opt"><input type="checkbox" value="เครียด/วิตกกังวล"><span>😰 เครียด/กังวล</span></label>
+      <label class="chk-opt"><input type="checkbox" value="ผื่นคัน/ผิวหนัง"><span>🔴 ผื่นคัน</span></label>
+      <label class="chk-opt"><input type="checkbox" value="ปวดประจำเดือน"><span>💢 ปวดประจำเดือน</span></label>
+    </div>
+    <input type="text" id="symptom-other" placeholder="อาการอื่นๆ โปรดระบุ..." style="margin-top:9px;width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;font-family:'Sarabun',sans-serif;font-size:14px;outline:none;">
+  </div>
+
+  <!-- STEP 6: ผู้ติดต่อฉุกเฉิน -->
+  <div class="card">
+    <div class="section-title"><span class="step-num">6</span> ผู้ติดต่อกรณีฉุกเฉิน</div>
+    <div class="form-group">
+      <label>ชื่อผู้ปกครอง / ผู้ติดต่อ <span class="required">*</span></label>
+      <input type="text" id="em-name" placeholder="ชื่อ-นามสกุล ผู้ปกครอง">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>เบอร์โทรศัพท์ <span class="required">*</span></label>
+      <input type="tel" id="em-phone" inputmode="numeric" maxlength="12" placeholder="08X-XXX-XXXX">
+    </div>
+  </div>
+
+  <!-- หมายเหตุ -->
+  <div class="card">
+    <div class="form-group" style="margin-bottom:0;">
+      <label>หมายเหตุเพิ่มเติม (ถ้ามี)</label>
+      <textarea id="note" placeholder="ข้อมูลสุขภาพอื่นๆ ที่ต้องการแจ้งเจ้าหน้าที่..."></textarea>
+    </div>
+  </div>
+
+  <button class="btn-submit" id="submit-btn" onclick="submitForm()">💜 ส่งแบบคัดกรองสุขภาพ</button>
+  <div style="text-align:center;font-size:12px;color:var(--text2);margin-top:12px;padding-bottom:28px;">ข้อมูลจะถูกเก็บเป็นความลับ ใช้เพื่อการดูแลสุขภาพเท่านั้น</div>
+</div>
+
+<div class="container" id="success-view" style="display:none;">
+  <div class="success-screen">
+    <div class="success-icon"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="success-title">บันทึกสำเร็จ!</div>
+    <div class="success-sub">ขอบคุณที่กรอกแบบคัดกรองสุขภาพ<br>ข้อมูลถูกบันทึกเรียบร้อยแล้ว</div>
+    <div class="success-detail" id="success-detail"></div>
+    <button class="btn-again" onclick="resetForm()">กรอกให้คนถัดไป</button>
+  </div>
+</div>
+
+<script>
+let allStudents = [], currentStudent = null;
+const TERM = '2/2569';
+
+async function init(){
+  try{
+    const res = await fetch('/api/students/levels');
+    const levels = await res.json();
+    const sel = document.getElementById('sel-level');
+    sel.innerHTML = '<option value="">— เลือกระดับชั้น —</option>' +
+      levels.map(l => `<option value="${l}">${l}</option>`).join('');
+  }catch(e){
+    document.getElementById('sel-level').innerHTML = '<option value="">— โหลดไม่ได้ —</option>';
+  }
+  try{
+    const r = await fetch('/api/settings-public');
+    if(r.ok){ const d = await r.json(); if(d.org_name) document.getElementById('org-display').textContent = d.org_name; }
+  }catch(e){}
+}
+
+async function onLevelChange(){
+  const level = document.getElementById('sel-level').value;
+  const roomSel = document.getElementById('sel-room');
+  const stuSel = document.getElementById('sel-student');
+  stuSel.innerHTML = '<option value="">— เลือกห้องก่อน —</option>'; stuSel.disabled = true;
+  currentStudent = null;
+  if(!level){ roomSel.innerHTML='<option value="">— เลือกระดับชั้นก่อน —</option>'; roomSel.disabled=true; return; }
+  roomSel.innerHTML = '<option value="">— กำลังโหลด... —</option>'; roomSel.disabled = true;
+  const res = await fetch('/api/students/rooms?level='+encodeURIComponent(level));
+  const rooms = await res.json();
+  roomSel.innerHTML = '<option value="">— เลือกห้อง —</option>' +
+    rooms.map(r => `<option value="${r.room}" data-dept="${r.dept}">${r.room} — ${r.dept} (${r.cnt} คน)</option>`).join('');
+  roomSel.disabled = false;
+}
+
+async function onRoomChange(){
+  const level = document.getElementById('sel-level').value;
+  const room = document.getElementById('sel-room').value;
+  const stuSel = document.getElementById('sel-student');
+  currentStudent = null;
+  if(!room){ stuSel.innerHTML='<option value="">— เลือกห้องก่อน —</option>'; stuSel.disabled=true; return; }
+  stuSel.innerHTML = '<option value="">— กำลังโหลด... —</option>'; stuSel.disabled = true;
+  const res = await fetch(`/api/students/list?level=${encodeURIComponent(level)}&room=${encodeURIComponent(room)}`);
+  allStudents = await res.json();
+  stuSel.innerHTML = '<option value="">— เลือกชื่อของคุณ —</option>' +
+    allStudents.map(s => `<option value="${s.sid}">${s.prefix}${s.fname} ${s.lname}</option>`).join('');
+  stuSel.disabled = false;
+}
+
+function onStudentChange(){
+  const sid = document.getElementById('sel-student').value;
+  currentStudent = allStudents.find(s => s.sid === sid) || null;
+}
+
+function calcBMI(){
+  const w = parseFloat(document.getElementById('weight').value)||0;
+  const h = parseFloat(document.getElementById('height').value)||0;
+  const box = document.getElementById('bmi-box');
+  if(w>0 && h>0){
+    const bmi = (w/((h/100)**2)).toFixed(1);
+    let cat = '', emoji = '';
+    if(bmi<18.5){cat='น้ำหนักน้อย';emoji='📉';}
+    else if(bmi<23){cat='ปกติ (สมส่วน)';emoji='✅';}
+    else if(bmi<25){cat='ท้วม';emoji='⚠️';}
+    else if(bmi<30){cat='อ้วนระดับ 1';emoji='⚠️';}
+    else {cat='อ้วนระดับ 2';emoji='🔴';}
+    box.textContent = `${emoji} BMI = ${bmi} — ${cat}`;
+    box.classList.add('show');
+  } else box.classList.remove('show');
+}
+
+function tog(name, boxId){
+  const val = document.querySelector(`input[name=${name}]:checked`)?.value;
+  const box = document.getElementById(boxId);
+  box.classList.toggle('show', val === 'มี');
+  if(val !== 'มี'){ const inp = box.querySelector('input'); if(inp) inp.value = ''; }
+}
+
+function showError(msg){
+  const el = document.getElementById('error-msg');
+  el.textContent = msg; el.classList.add('show');
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function hideError(){ document.getElementById('error-msg').classList.remove('show'); }
+
+function getRadio(name, def){ return document.querySelector(`input[name=${name}]:checked`)?.value || def; }
+
+function combineField(name, detailId, def='ไม่มี'){
+  const v = getRadio(name, '');
+  if(v === 'มี'){
+    const d = document.getElementById(detailId).value.trim();
+    return d || 'มี (ไม่ระบุ)';
+  }
+  return v || def;
+}
+
+async function submitForm(){
+  hideError();
+  if(!currentStudent){ showError('กรุณาเลือกระดับชั้น ห้อง และชื่อของคุณ'); return; }
+
+  const w = parseFloat(document.getElementById('weight').value)||0;
+  const h = parseFloat(document.getElementById('height').value)||0;
+  if(!w){ showError('กรุณากรอกน้ำหนัก'); document.getElementById('weight').focus(); return; }
+  if(!h){ showError('กรุณากรอกส่วนสูง'); document.getElementById('height').focus(); return; }
+
+  const cong = getRadio('cong','');
+  if(!cong){ showError('กรุณาระบุว่ามีโรคประจำตัวหรือไม่'); return; }
+  if(cong==='มี' && !document.getElementById('cong-detail').value.trim()){
+    showError('กรุณาระบุโรคประจำตัว'); document.getElementById('cong-detail').focus(); return; }
+
+  const dal = getRadio('dallergy','');
+  if(!dal){ showError('กรุณาระบุประวัติแพ้ยา'); return; }
+  if(dal==='มี' && !document.getElementById('dallergy-detail').value.trim()){
+    showError('กรุณาระบุชื่อยาที่แพ้'); document.getElementById('dallergy-detail').focus(); return; }
+
+  const emName = document.getElementById('em-name').value.trim();
+  const emPhone = document.getElementById('em-phone').value.trim();
+  if(!emName){ showError('กรุณากรอกชื่อผู้ปกครอง'); document.getElementById('em-name').focus(); return; }
+  if(!emPhone){ showError('กรุณากรอกเบอร์โทรผู้ปกครอง'); document.getElementById('em-phone').focus(); return; }
+
+  const syms = [...document.querySelectorAll('.chk-grid input:checked')].map(c=>c.value);
+  const other = document.getElementById('symptom-other').value.trim();
+  if(other) syms.push(other);
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+
+  const payload = {
+    sid: currentStudent.sid,
+    student_name: `${currentStudent.prefix}${currentStudent.fname} ${currentStudent.lname}`,
+    level: document.getElementById('sel-level').value,
+    room: document.getElementById('sel-room').value,
+    dept: currentStudent.dept || '',
+    weight: w, height: h,
+    congenital: combineField('cong','cong-detail'),
+    drug_allergy: combineField('dallergy','dallergy-detail'),
+    food_allergy: combineField('fallergy','fallergy-detail'),
+    current_meds: combineField('meds','meds-detail'),
+    symptoms: syms.join(', '),
+    vision: getRadio('vision','ปกติ'),
+    hearing: getRadio('hearing','ปกติ'),
+    dental: getRadio('dental','ปกติ'),
+    blood_type: getRadio('blood',''),
+    emergency_name: emName, emergency_phone: emPhone,
+    note: document.getElementById('note').value.trim(),
+    term: TERM
+  };
+
+  try{
+    const res = await fetch('/api/screenings', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(!res.ok){ showError(data.error||'เกิดข้อผิดพลาด'); btn.disabled=false; btn.textContent='💜 ส่งแบบคัดกรองสุขภาพ'; return; }
+
+    document.getElementById('success-detail').innerHTML =
+      `<div>👤 ${payload.student_name}</div>` +
+      `<div>🏫 ${payload.level} · ${payload.room}</div>` +
+      `<div>⚖️ ${w} กก. · ${h} ซม.` + (data.bmi ? ` · BMI ${data.bmi}` : '') + `</div>` +
+      `<div>💊 แพ้ยา: ${payload.drug_allergy}</div>` +
+      (data.updated ? `<div style="color:#BA7517;">♻️ อัปเดตข้อมูลเดิม</div>` : '');
+
+    document.getElementById('form-view').style.display='none';
+    document.getElementById('success-view').style.display='block';
+    window.scrollTo(0,0);
+  }catch(e){
+    showError('ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่');
+    btn.disabled=false; btn.textContent='💜 ส่งแบบคัดกรองสุขภาพ';
+  }
+}
+
+function resetForm(){
+  document.querySelectorAll('input[type=radio],input[type=checkbox]').forEach(r=>r.checked=false);
+  ['weight','height','cong-detail','dallergy-detail','fallergy-detail','meds-detail',
+   'symptom-other','em-name','em-phone','note'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.querySelectorAll('.detail-box').forEach(b=>b.classList.remove('show'));
+  document.getElementById('bmi-box').classList.remove('show');
+  document.getElementById('sel-student').value='';
+  currentStudent=null;
+  document.getElementById('submit-btn').disabled=false;
+  document.getElementById('submit-btn').textContent='💜 ส่งแบบคัดกรองสุขภาพ';
+  document.getElementById('form-view').style.display='block';
+  document.getElementById('success-view').style.display='none';
+  hideError(); window.scrollTo(0,0);
+}
+
+init();
+</script>
+</body>
+</html>
