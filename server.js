@@ -4,6 +4,7 @@ const qrcode = require('qrcode');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,6 +50,24 @@ async function initDB() {
     note TEXT DEFAULT '', source TEXT DEFAULT 'qr',
     processed_at TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')))`);
 
+  await run(`CREATE TABLE IF NOT EXISTS students (
+    sid TEXT PRIMARY KEY, prefix TEXT DEFAULT '', fname TEXT NOT NULL,
+    lname TEXT DEFAULT '', level TEXT NOT NULL, room TEXT NOT NULL,
+    dept TEXT DEFAULT '')`);
+  await run(`CREATE TABLE IF NOT EXISTS screenings (
+    id TEXT PRIMARY KEY, sid TEXT NOT NULL, student_name TEXT NOT NULL,
+    level TEXT NOT NULL, room TEXT NOT NULL, dept TEXT DEFAULT '',
+    weight REAL, height REAL, bmi REAL,
+    congenital TEXT DEFAULT 'ไม่มี', drug_allergy TEXT DEFAULT 'ไม่มี',
+    food_allergy TEXT DEFAULT 'ไม่มี', current_meds TEXT DEFAULT 'ไม่มี',
+    symptoms TEXT DEFAULT '', vision TEXT DEFAULT 'ปกติ', hearing TEXT DEFAULT 'ปกติ',
+    dental TEXT DEFAULT 'ปกติ', blood_type TEXT DEFAULT '',
+    emergency_name TEXT DEFAULT '', emergency_phone TEXT DEFAULT '',
+    note TEXT DEFAULT '', term TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now','localtime')))`);
+  await run(`CREATE INDEX IF NOT EXISTS idx_students_room ON students(level, room)`);
+  await run(`CREATE INDEX IF NOT EXISTS idx_screen_room ON screenings(level, room)`);
+
   // เพิ่ม column ที่อาจไม่มีใน database เก่า (ไม่ error ถ้ามีอยู่แล้ว)
   const alterCmds = [
     "ALTER TABLE dispenses ADD COLUMN note TEXT DEFAULT ''",
@@ -64,6 +83,22 @@ async function initDB() {
   if (!org) {
     await run("INSERT OR IGNORE INTO settings VALUES ('org_name','สถานศึกษา')");
     await run("INSERT OR IGNORE INTO settings VALUES ('admin_name','ผู้ดูแลระบบ')");
+  }
+
+  // นำเข้ารายชื่อนักเรียนครั้งแรก (ครั้งเดียว)
+  const scount = await get('SELECT COUNT(*) as n FROM students').catch(()=>({n:0}));
+  if (!scount || scount.n === 0) {
+    try {
+      const seedPath = path.join(__dirname, 'data', 'students.json');
+      const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+      await run('BEGIN TRANSACTION');
+      for (const s of seed.students) {
+        await run('INSERT OR IGNORE INTO students (sid,prefix,fname,lname,level,room,dept) VALUES (?,?,?,?,?,?,?)',
+          [s.sid, s.prefix||'', s.fname, s.lname||'', s.level, s.room, s.dept||'']);
+      }
+      await run('COMMIT');
+      console.log('✅ นำเข้ารายชื่อนักเรียน ' + seed.students.length + ' คน');
+    } catch(e) { console.log('⚠️  ไม่พบไฟล์รายชื่อนักเรียน:', e.message); }
   }
   console.log('✅ SQLite ready at', dbPath);
 }
@@ -228,6 +263,92 @@ app.delete('/api/requisitions/:id', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── STUDENTS (ฐานข้อมูลนักเรียน) ─────────────────────────────
+app.get('/api/students/levels', async (req, res) => {
+  const rows = await all('SELECT DISTINCT level FROM students ORDER BY level');
+  res.json(rows.map(r => r.level));
+});
+
+app.get('/api/students/rooms', async (req, res) => {
+  const { level } = req.query;
+  if (!level) return res.json([]);
+  res.json(await all(
+    'SELECT room, dept, COUNT(*) as cnt FROM students WHERE level=? GROUP BY room, dept ORDER BY room',
+    [level]));
+});
+
+app.get('/api/students/list', async (req, res) => {
+  const { level, room } = req.query;
+  if (!level || !room) return res.json([]);
+  res.json(await all(
+    'SELECT sid, prefix, fname, lname, dept FROM students WHERE level=? AND room=? ORDER BY sid',
+    [level, room]));
+});
+
+// ─── SCREENINGS (คัดกรองสุขภาพ) ───────────────────────────────
+app.get('/api/screenings', requireAuth, async (req, res) => {
+  const { level, room, search, term } = req.query;
+  let q = 'SELECT * FROM screenings WHERE 1=1'; const p = [];
+  if (level) { q += ' AND level=?'; p.push(level); }
+  if (room)  { q += ' AND room=?';  p.push(room); }
+  if (term)  { q += ' AND term=?';  p.push(term); }
+  if (search){ q += ' AND (student_name LIKE ? OR sid LIKE ?)'; p.push('%'+search+'%','%'+search+'%'); }
+  res.json(await all(q + ' ORDER BY level, room, sid', p));
+});
+
+app.get('/api/screenings/stats', requireAuth, async (req, res) => {
+  const total    = await get('SELECT COUNT(*) as n FROM screenings');
+  const students = await get('SELECT COUNT(*) as n FROM students');
+  const byLevel  = await all('SELECT level, COUNT(*) as n FROM screenings GROUP BY level ORDER BY level');
+  const risk     = await get("SELECT COUNT(*) as n FROM screenings WHERE congenital != 'ไม่มี' OR drug_allergy != 'ไม่มี'");
+  res.json({ total: total.n, students: students.n, byLevel, risk: risk.n });
+});
+
+app.post('/api/screenings', async (req, res) => {
+  const b = req.body;
+  if (!b.sid || !b.student_name) return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+  const exists = await get('SELECT id FROM screenings WHERE sid=? AND term=?', [b.sid, b.term||'']);
+  const w = parseFloat(b.weight)||0, h = parseFloat(b.height)||0;
+  const bmi = (w>0 && h>0) ? +(w/((h/100)**2)).toFixed(1) : null;
+  const vals = [b.student_name, b.level, b.room, b.dept||'', w||null, h||null, bmi,
+    b.congenital||'ไม่มี', b.drug_allergy||'ไม่มี', b.food_allergy||'ไม่มี', b.current_meds||'ไม่มี',
+    b.symptoms||'', b.vision||'ปกติ', b.hearing||'ปกติ', b.dental||'ปกติ', b.blood_type||'',
+    b.emergency_name||'', b.emergency_phone||'', b.note||'', b.term||''];
+  if (exists) {
+    await run(`UPDATE screenings SET student_name=?,level=?,room=?,dept=?,weight=?,height=?,bmi=?,
+      congenital=?,drug_allergy=?,food_allergy=?,current_meds=?,symptoms=?,vision=?,hearing=?,
+      dental=?,blood_type=?,emergency_name=?,emergency_phone=?,note=?,term=?,created_at=? WHERE id=?`,
+      [...vals, nowBKK(), exists.id]);
+    return res.json({ id: exists.id, updated: true, bmi, ok: true });
+  }
+  const id = uid();
+  await run(`INSERT INTO screenings (id,sid,student_name,level,room,dept,weight,height,bmi,
+    congenital,drug_allergy,food_allergy,current_meds,symptoms,vision,hearing,dental,blood_type,
+    emergency_name,emergency_phone,note,term,created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [id, b.sid, ...vals, nowBKK()]);
+  res.json({ id, bmi, ok: true });
+});
+
+app.put('/api/screenings/:id', requireAuth, async (req, res) => {
+  const b = req.body;
+  const w = parseFloat(b.weight)||0, h = parseFloat(b.height)||0;
+  const bmi = (w>0 && h>0) ? +(w/((h/100)**2)).toFixed(1) : null;
+  await run(`UPDATE screenings SET student_name=?,weight=?,height=?,bmi=?,congenital=?,drug_allergy=?,
+    food_allergy=?,current_meds=?,symptoms=?,vision=?,hearing=?,dental=?,blood_type=?,
+    emergency_name=?,emergency_phone=?,note=? WHERE id=?`,
+    [b.student_name, w||null, h||null, bmi, b.congenital||'ไม่มี', b.drug_allergy||'ไม่มี',
+     b.food_allergy||'ไม่มี', b.current_meds||'ไม่มี', b.symptoms||'', b.vision||'ปกติ',
+     b.hearing||'ปกติ', b.dental||'ปกติ', b.blood_type||'', b.emergency_name||'',
+     b.emergency_phone||'', b.note||'', req.params.id]);
+  res.json({ ok: true });
+});
+
+app.delete('/api/screenings/:id', requireAuth, async (req, res) => {
+  await run('DELETE FROM screenings WHERE id=?', [req.params.id]);
+  res.json({ ok: true });
+});
+
 // ─── QR CODE ─────────────────────────────────────────────────
 app.get('/api/qr', requireAuth, async (req, res) => {
   const url = `${BASE_URL}/student`;
@@ -245,8 +366,18 @@ app.get('/api/qr/teacher', requireAuth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+app.get('/api/qr/screening', requireAuth, async (req, res) => {
+  const url = `${BASE_URL}/screening`;
+  try {
+    const dataUrl = await qrcode.toDataURL(url, { width:400, margin:2, color:{ dark:'#7C3AED', light:'#ffffff' } });
+    res.json({ qr: dataUrl, url });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── ROUTING ─────────────────────────────────────────────────
 app.get('/student', (req, res) => res.sendFile(path.join(__dirname, 'public', 'student', 'index.html')));
+app.get('/screening', (req, res) => res.sendFile(path.join(__dirname, 'public', 'screening', 'index.html')));
 app.get('/teacher', (req, res) => res.sendFile(path.join(__dirname, 'public', 'teacher', 'index.html')));
 app.get('/admin*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html')));
 app.get('/', (req, res) => res.redirect('/admin'));
