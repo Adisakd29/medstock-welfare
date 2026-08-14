@@ -93,6 +93,19 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min
     </div>
   </div>
 
+  <!-- STEP 1.5: รูปถ่าย -->
+  <div class="card" id="photo-card" style="display:none;">
+    <div class="section-title"><span class="step-num">📷</span> รูปถ่ายนักเรียน</div>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <div id="sc-photo-preview" style="width:88px;height:112px;border-radius:10px;border:2px dashed var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:26px;color:var(--text2);flex-shrink:0;">👤</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:9px;" id="photo-status">ยังไม่มีรูปในระบบ — อัปโหลดรูปของคุณได้ (ไม่บังคับ)</div>
+        <input type="file" id="sc-photo-input" accept="image/*" style="display:none;" onchange="onScPhotoPick(event)">
+        <button type="button" onclick="document.getElementById('sc-photo-input').click()" style="padding:9px 16px;background:var(--purple-light);color:var(--purple-text);border:1.5px solid var(--purple);border-radius:9px;font-family:'Sarabun',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">📷 เลือก / ถ่ายรูป</button>
+      </div>
+    </div>
+  </div>
+
   <!-- STEP 2: ข้อมูลร่างกาย -->
   <div class="card">
     <div class="section-title"><span class="step-num">2</span> ข้อมูลร่างกาย</div>
@@ -302,9 +315,67 @@ async function onRoomChange(){
   stuSel.disabled = false;
 }
 
-function onStudentChange(){
+let scPhotoData = null;
+
+async function onStudentChange(){
   const sid = document.getElementById('sel-student').value;
   currentStudent = allStudents.find(s => s.sid === sid) || null;
+  const card = document.getElementById('photo-card');
+  const prev = document.getElementById('sc-photo-preview');
+  const stat = document.getElementById('photo-status');
+  scPhotoData = null;
+  if(!currentStudent){ card.style.display='none'; return; }
+  card.style.display = 'block';
+  prev.innerHTML = '👤';
+  stat.textContent = 'กำลังตรวจสอบรูปในระบบ...';
+  try{
+    const r = await (await fetch('/api/students/photo/'+sid)).json();
+    if(r.photo){
+      prev.innerHTML = `<img src="${r.photo}" style="width:100%;height:100%;object-fit:cover;">`;
+      stat.innerHTML = '<span style="color:#0F6E56;">✓ มีรูปในระบบแล้ว</span> — เลือกรูปใหม่เพื่อเปลี่ยน';
+    } else {
+      stat.textContent = 'ยังไม่มีรูปในระบบ — อัปโหลดรูปของคุณได้ (ไม่บังคับ)';
+    }
+  }catch(e){ stat.textContent = 'อัปโหลดรูปของคุณได้ (ไม่บังคับ)'; }
+}
+
+function compressImage(file, maxW=400, maxH=520, quality=0.72){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        const ratio = Math.min(maxW/w, maxH/h, 1);
+        w = Math.round(w*ratio); h = Math.round(h*ratio);
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        const ctx = cv.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(cv.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('ไฟล์รูปไม่ถูกต้อง'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('อ่านไฟล์ไม่ได้'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function onScPhotoPick(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ showError('กรุณาเลือกไฟล์รูปภาพ'); return; }
+  try{
+    scPhotoData = await compressImage(file);
+    document.getElementById('sc-photo-preview').innerHTML =
+      `<img src="${scPhotoData}" style="width:100%;height:100%;object-fit:cover;">`;
+    document.getElementById('photo-status').innerHTML =
+      `<span style="color:#5B21B6;">📷 เลือกรูปใหม่แล้ว (~${Math.round(scPhotoData.length*0.75/1024)} KB)</span> — จะบันทึกเมื่อกดส่งฟอร์ม`;
+    hideError();
+  }catch(e){ showError(e.message); }
+  ev.target.value = '';
 }
 
 function calcBMI(){
@@ -409,11 +480,21 @@ async function submitForm(){
     const data = await res.json();
     if(!res.ok){ showError(data.error||'เกิดข้อผิดพลาด'); btn.disabled=false; btn.textContent='💜 ส่งแบบคัดกรองสุขภาพ'; return; }
 
+    if(scPhotoData){
+      try{
+        await fetch('/api/students/'+currentStudent.sid+'/photo', {
+          method:'PUT', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ photo: scPhotoData })
+        });
+      }catch(e){}
+    }
+
     document.getElementById('success-detail').innerHTML =
       `<div>👤 ${payload.student_name}</div>` +
       `<div>🏫 ${payload.level} · ${payload.room}</div>` +
       `<div>⚖️ ${w} กก. · ${h} ซม.` + (data.bmi ? ` · BMI ${data.bmi}` : '') + `</div>` +
       `<div>💊 แพ้ยา: ${payload.drug_allergy}</div>` +
+      (scPhotoData ? `<div>📷 บันทึกรูปถ่ายแล้ว</div>` : '') +
       (data.updated ? `<div style="color:#BA7517;">♻️ อัปเดตข้อมูลเดิม</div>` : '');
 
     document.getElementById('form-view').style.display='none';
@@ -434,7 +515,9 @@ function resetForm(){
   document.querySelectorAll('.detail-box').forEach(b=>b.classList.remove('show'));
   document.getElementById('bmi-box').classList.remove('show');
   document.getElementById('sel-student').value='';
-  currentStudent=null;
+  currentStudent=null; scPhotoData=null;
+  document.getElementById('photo-card').style.display='none';
+  document.getElementById('sc-photo-preview').innerHTML='👤';
   document.getElementById('submit-btn').disabled=false;
   document.getElementById('submit-btn').textContent='💜 ส่งแบบคัดกรองสุขภาพ';
   document.getElementById('form-view').style.display='block';
